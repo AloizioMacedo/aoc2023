@@ -5,7 +5,18 @@ on:
       - master
 
 jobs:
-  deploy:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: ls -d Rust/* | xargs -I {} bash -c "cd '{}' && cargo test"
+  book:
     runs-on: ubuntu-latest
     permissions:
       contents: write # To push a branch
