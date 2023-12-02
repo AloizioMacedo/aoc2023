@@ -25,21 +25,18 @@ fn parse_line(line: &str) -> Result<u32> {
 fn transform_line(line: &str) -> Vec<u32> {
     let mut numbers = Vec::new();
 
-    // Adding gibberish at the end just to guarantee comfortable buffering.
-    let fake_line = line.to_string() + "AAAAA";
-
     for i in 0..line.len() {
         for (j, spelled_out_number) in SPELLED_OUT_NUMBERS.iter().enumerate() {
-            if fake_line[i..(i + 5)].starts_with(spelled_out_number) {
+            if line[i..].starts_with(spelled_out_number) {
                 numbers.push(j as u32 + 1);
                 break;
             }
         }
 
-        if let Some(x) = fake_line[i..(i + 5)]
+        if let Some(x) = line[i..]
             .chars()
             .next()
-            .expect("Should not be empty given that it has AAAAA at the end")
+            .expect("Should not be empty given that i < line.len()")
             .to_digit(10)
         {
             numbers.push(x);
