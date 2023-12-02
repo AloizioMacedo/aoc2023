@@ -34,16 +34,6 @@ impl FromStr for Color {
     }
 }
 
-impl Color {
-    fn get_max(&self) -> usize {
-        match self {
-            Self::Red(_) => RED_CUBES,
-            Self::Green(_) => GREEN_CUBES,
-            Self::Blue(_) => BLUE_CUBES,
-        }
-    }
-}
-
 #[derive(Debug)]
 struct Set {
     red: usize,
@@ -85,10 +75,13 @@ impl<'a> Game<'a> {
     }
 }
 
-fn parse_line(line: &str) -> Game {
+fn parse_line(line: &str) -> Result<Game> {
     let line: Vec<&str> = line.split(&[':', ';']).collect();
 
-    let id = line[0].split(' ').nth(1).expect("Game should have id");
+    let id = line[0]
+        .split(' ')
+        .nth(1)
+        .ok_or(anyhow!("Error parsing id"))?;
 
     let mut sets = Vec::new();
 
@@ -100,9 +93,7 @@ fn parse_line(line: &str) -> Game {
         let cubes_as_strings: Vec<&str> = set.split(", ").map(|x| x.trim()).collect();
 
         for cube in cubes_as_strings {
-            let color: Color = cube
-                .parse()
-                .expect("Cube should be a pair (number, color) but was {cube}");
+            let color: Color = cube.parse()?;
 
             match color {
                 Color::Red(x) => red = x,
@@ -115,26 +106,37 @@ fn parse_line(line: &str) -> Game {
         sets.push(set);
     }
 
-    Game { id, sets }
+    Ok(Game { id, sets })
 }
 
-fn solve_part_one(contents: &str) -> usize {
+pub fn solve_part_one(contents: &str) -> usize {
     contents
         .lines()
-        .map(parse_line)
+        .flat_map(|line| {
+            parse_line(line).map_err(|e| {
+                eprintln!("ERROR: Failed to parse line '{line}': {e}");
+                e
+            })
+        })
         .filter(|game| game.is_possible())
-        .map(|game| {
-            game.id
-                .parse::<usize>()
-                .expect("Id should be convertible to int")
+        .flat_map(|game| {
+            game.id.parse::<usize>().map_err(|e| {
+                eprintln!("ERROR: Id '{}' can't be parsed into int: {e}", game.id);
+                e
+            })
         })
         .sum()
 }
 
-fn solve_part_two(contents: &str) -> usize {
+pub fn solve_part_two(contents: &str) -> usize {
     contents
         .lines()
-        .map(parse_line)
+        .flat_map(|line| {
+            parse_line(line).map_err(|e| {
+                eprintln!("ERROR: Failed to parse line '{line}': {e}");
+                e
+            })
+        })
         .map(|game| game.get_max_of_each_set())
         .map(|game| game.get_power())
         .sum()
