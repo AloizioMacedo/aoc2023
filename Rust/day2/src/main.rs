@@ -8,7 +8,7 @@ const RED_CUBES: usize = 12;
 const GREEN_CUBES: usize = 13;
 const BLUE_CUBES: usize = 14;
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Debug)]
 enum Color {
     Red(usize),
     Green(usize),
