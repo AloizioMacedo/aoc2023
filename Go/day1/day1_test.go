@@ -24,3 +24,16 @@ func TestPartOne(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestNewParse(t *testing.T) {
+	if parse_line_with_spelled_out_names("oneight") != 18 {
+		t.Fail()
+	}
+}
+
+func TestPartTwo(t *testing.T) {
+	if solve_part_two("test_part_two.txt") != 281 {
+		println(solve_part_two("test_part_two.txt"))
+		t.Fail()
+	}
+}
