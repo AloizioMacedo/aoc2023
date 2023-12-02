@@ -49,7 +49,7 @@ impl Set {
     }
 
     fn get_power(&self) -> usize {
-        self.cubes.values().fold(1, |acc, e| acc * e)
+        self.cubes.values().product()
     }
 }
 
