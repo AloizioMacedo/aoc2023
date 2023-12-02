@@ -47,6 +47,10 @@ impl Set {
     fn is_possible(&self) -> bool {
         self.cubes.iter().all(|(k, v)| v <= &k.get_max())
     }
+
+    fn get_power(&self) -> usize {
+        self.cubes.values().fold(1, |acc, e| acc * e)
+    }
 }
 
 #[derive(Debug)]
@@ -56,12 +60,36 @@ struct Game<'a> {
 }
 
 impl<'a> Game<'a> {
-    fn new(id: &str) -> Game {
-        Game { id, sets: vec![] }
-    }
-
     fn is_possible(&self) -> bool {
         self.sets.iter().all(|set| set.is_possible())
+    }
+
+    fn get_max_of_each_set(&self) -> Set {
+        let mut result = HashMap::new();
+        let max_red = self
+            .sets
+            .iter()
+            .map(|set| set.cubes.get(&Color::Red).unwrap_or(&0))
+            .max()
+            .unwrap_or(&0);
+        let max_blue = self
+            .sets
+            .iter()
+            .map(|set| set.cubes.get(&Color::Blue).unwrap_or(&0))
+            .max()
+            .unwrap_or(&0);
+        let max_green = self
+            .sets
+            .iter()
+            .map(|set| set.cubes.get(&Color::Green).unwrap_or(&0))
+            .max()
+            .unwrap_or(&0);
+
+        result.insert(Color::Red, *max_red);
+        result.insert(Color::Blue, *max_blue);
+        result.insert(Color::Green, *max_green);
+
+        Set { cubes: result }
     }
 }
 
@@ -107,8 +135,17 @@ fn solve_part_one(contents: &str) -> usize {
         .sum()
 }
 
+fn solve_part_two(contents: &str) -> usize {
+    contents
+        .lines()
+        .map(parse_line)
+        .map(|game| game.get_max_of_each_set())
+        .map(|game| game.get_power())
+        .sum()
+}
 fn main() {
-    println!("{}", solve_part_one(INPUT))
+    println!("{}", solve_part_one(INPUT));
+    println!("{}", solve_part_two(INPUT));
 }
 
 #[cfg(test)]
@@ -125,5 +162,10 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST), 8)
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST), 2286)
     }
 }
