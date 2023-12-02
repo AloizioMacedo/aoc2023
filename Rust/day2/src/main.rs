@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 
@@ -10,19 +10,25 @@ const BLUE_CUBES: usize = 14;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 enum Color {
-    Red,
-    Green,
-    Blue,
+    Red(usize),
+    Green(usize),
+    Blue(usize),
 }
 
 impl FromStr for Color {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "red" => Ok(Self::Red),
-            "green" => Ok(Self::Green),
-            "blue" => Ok(Self::Blue),
+        let (num, color) = s
+            .split_once(' ')
+            .ok_or(anyhow!("Incorrect syntax for parsing {s}"))?;
+
+        let num = num.parse()?;
+
+        match color {
+            "red" => Ok(Self::Red(num)),
+            "green" => Ok(Self::Green(num)),
+            "blue" => Ok(Self::Blue(num)),
             _ => Err(anyhow!("Invalid color")),
         }
     }
@@ -31,25 +37,27 @@ impl FromStr for Color {
 impl Color {
     fn get_max(&self) -> usize {
         match self {
-            Self::Red => RED_CUBES,
-            Self::Green => GREEN_CUBES,
-            Self::Blue => BLUE_CUBES,
+            Self::Red(_) => RED_CUBES,
+            Self::Green(_) => GREEN_CUBES,
+            Self::Blue(_) => BLUE_CUBES,
         }
     }
 }
 
 #[derive(Debug)]
 struct Set {
-    cubes: HashMap<Color, usize>,
+    red: usize,
+    green: usize,
+    blue: usize,
 }
 
 impl Set {
     fn is_possible(&self) -> bool {
-        self.cubes.iter().all(|(k, v)| v <= &k.get_max())
+        self.red <= RED_CUBES && self.green <= GREEN_CUBES && self.blue <= BLUE_CUBES
     }
 
     fn get_power(&self) -> usize {
-        self.cubes.values().product()
+        self.red * self.green * self.blue
     }
 }
 
@@ -65,31 +73,15 @@ impl<'a> Game<'a> {
     }
 
     fn get_max_of_each_set(&self) -> Set {
-        let mut result = HashMap::new();
-        let max_red = self
-            .sets
-            .iter()
-            .map(|set| set.cubes.get(&Color::Red).unwrap_or(&0))
-            .max()
-            .unwrap_or(&0);
-        let max_blue = self
-            .sets
-            .iter()
-            .map(|set| set.cubes.get(&Color::Blue).unwrap_or(&0))
-            .max()
-            .unwrap_or(&0);
-        let max_green = self
-            .sets
-            .iter()
-            .map(|set| set.cubes.get(&Color::Green).unwrap_or(&0))
-            .max()
-            .unwrap_or(&0);
+        let max_red = self.sets.iter().map(|set| set.red).max().unwrap_or(0);
+        let max_blue = self.sets.iter().map(|set| set.blue).max().unwrap_or(0);
+        let max_green = self.sets.iter().map(|set| set.green).max().unwrap_or(0);
 
-        result.insert(Color::Red, *max_red);
-        result.insert(Color::Blue, *max_blue);
-        result.insert(Color::Green, *max_green);
-
-        Set { cubes: result }
+        Set {
+            red: max_red,
+            blue: max_blue,
+            green: max_green,
+        }
     }
 }
 
@@ -101,21 +93,25 @@ fn parse_line(line: &str) -> Game {
     let mut sets = Vec::new();
 
     for set in &line[1..] {
-        let mut cubes = HashMap::new();
+        let mut red = 0;
+        let mut green = 0;
+        let mut blue = 0;
+
         let cubes_as_strings: Vec<&str> = set.split(", ").map(|x| x.trim()).collect();
 
         for cube in cubes_as_strings {
-            let (number, color) = cube
-                .split_once(' ')
-                .expect("Should have pair number, color");
+            let color: Color = cube
+                .parse()
+                .expect("Cube should be a pair (number, color) but was {cube}");
 
-            let color: Color = color.parse().expect("Color should exist");
-            let number: usize = number.parse().expect("Number of cubes should make sense");
-
-            cubes.insert(color, number);
+            match color {
+                Color::Red(x) => red = x,
+                Color::Green(x) => green = x,
+                Color::Blue(x) => blue = x,
+            }
         }
 
-        let set = Set { cubes };
+        let set = Set { red, green, blue };
         sets.push(set);
     }
 
