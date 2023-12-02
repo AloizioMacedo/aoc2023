@@ -14,3 +14,9 @@ func TestPartOne(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestPartTwo(t *testing.T) {
+	if solve_part_two("test_input.txt") != 2286 {
+		t.Fail()
+	}
+}

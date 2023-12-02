@@ -35,6 +35,26 @@ func (g Game) is_possible() bool {
 	return true
 }
 
+func (g Game) get_max_set() Set {
+	max_red := 0
+	max_green := 0
+	max_blue := 0
+
+	for _, set := range g.sets {
+		if set.red > max_red {
+			max_red = set.red
+		}
+		if set.green > max_green {
+			max_green = set.green
+		}
+		if set.blue > max_blue {
+			max_blue = set.blue
+		}
+	}
+
+	return Set{max_red, max_green, max_blue}
+}
+
 type Set struct {
 	red   int
 	green int
@@ -43,6 +63,10 @@ type Set struct {
 
 func (s Set) is_possible() bool {
 	return s.red <= MAX_RED && s.green <= MAX_GREEN && s.blue <= MAX_BLUE
+}
+
+func (s Set) get_power() int {
+	return s.red * s.green * s.blue
 }
 
 func parse_line(line string) Game {
@@ -111,6 +135,27 @@ func solve_part_one(file_name string) int {
 	return total
 }
 
+func solve_part_two(file_name string) int {
+	contents_as_bytes, _ := os.ReadFile(file_name)
+
+	contents := string(contents_as_bytes)
+
+	total := 0
+	for _, line := range strings.Split(contents, "\n") {
+		if line == "" {
+			continue
+		}
+
+		game := parse_line(line)
+		set := game.get_max_set()
+
+		total += set.get_power()
+	}
+
+	return total
+}
+
 func main() {
 	println(solve_part_one("input.txt"))
+	println(solve_part_two("input.txt"))
 }
