@@ -218,3 +218,339 @@ fn solve_part_two(contents: &str) -> usize {
         .sum()
 }
 ```
+
+### Refactoring Part Two
+
+Let's now change the two points that I alluded to before:
+
+1. Remove the `HashMap`.
+1. Better error handling.
+
+> Before moving on, it is worth mentioning that removing the HashMap is a non-trivial
+> trade-off. Indeed, if we ever needed to accept arbitrary color names at run time,
+> we would need to go back to `HashMap`.
+>
+> But getting rid of the `HashMap` allows us to reduce heap usage and optimize our
+> code in general.
+
+For the first part, we do the following changes:
+
+```diff
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
+enum Color {
+-    Red,
+-    Green,
+-    Blue,
++    Red(usize),
++    Green(usize),
++    Blue(usize),
+}
+```
+
+We will encode the number of cubes, and parse the relevant strings into this
+format.
+
+Indeed, this is our new parsing:
+
+```diff
+    fn from_str(s: &str) -> Result<Self> {
+-        match s {
+-            "red" => Ok(Self::Red),
+-            "green" => Ok(Self::Green),
+-            "blue" => Ok(Self::Blue),
+-            _ => Err(anyhow!("Invalid color")),
+-        }
++        let (num, color) = s
++            .split_once(' ')
++            .ok_or(anyhow!("Incorrect syntax for parsing {s}"))?;
++
++        let num = num.parse()?;
++
++        match color {
++            "red" => Ok(Self::Red(num)),
++            "green" => Ok(Self::Green(num)),
++            "blue" => Ok(Self::Blue(num)),
++            _ => Err(anyhow!("Invalid color")),
++        }
+    }
+```
+
+And our set now changes to this:
+
+```diff
+#[derive(Debug)]
+struct Set {
+-    cubes: HashMap<Color, usize>,
++    red: usize,
++    green: usize,
++    blue: usize,
+}
+
+impl Set {
+    fn is_possible(&self) -> bool {
+-        self.cubes.iter().all(|(k, v)| v <= &k.get_max())
++        self.red <= RED_CUBES && self.green <= GREEN_CUBES && self.blue <= BLUE_CUBES
+    }
+
+    fn get_power(&self) -> usize {
+-        self.cubes.values().product()
++        self.red * self.green * self.blue
+    }
+}
+```
+
+Our `get_max_of_each_set` changes to the the following:
+
+```diff
+    fn get_max_of_each_set(&self) -> Set {
+-        let mut result = HashMap::new();
+-        let max_red = self
+-            .sets
+-            .iter()
+-            .map(|set| set.cubes.get(&Color::Red).unwrap_or(&0))
+-            .max()
+-            .unwrap_or(&0);
+-        let max_blue = self
+-            .sets
+-            .iter()
+-            .map(|set| set.cubes.get(&Color::Blue).unwrap_or(&0))
+-            .max()
+-            .unwrap_or(&0);
+-        let max_green = self
+-            .sets
+-            .iter()
+-            .map(|set| set.cubes.get(&Color::Green).unwrap_or(&0))
+-            .max()
+-            .unwrap_or(&0);
+-
+-        result.insert(Color::Red, *max_red);
+-        result.insert(Color::Blue, *max_blue);
+-        result.insert(Color::Green, *max_green);
+-
+-        Set { cubes: result }
++        let max_red = self.sets.iter().map(|set| set.red).max().unwrap_or(0);
++        let max_blue = self.sets.iter().map(|set| set.blue).max().unwrap_or(0);
++        let max_green = self.sets.iter().map(|set| set.green).max().unwrap_or(0);
++
++        Set {
++            red: max_red,
++            blue: max_blue,
++            green: max_green,
++        }
+    }
+```
+
+And the bulk of our parsing changes like this:
+
+```diff
+    for set in &line[1..] {
+-        let mut cubes = HashMap::new();
++        let mut red = 0;
++        let mut green = 0;
++        let mut blue = 0;
+
+         let cubes_as_strings: Vec<&str> = set.split(", ").map(|x| x.trim()).collect();
+
+         for cube in cubes_as_strings {
+-            let (number, color) = cube
+-                .split_once(' ')
+-                .expect("Should have pair number, color");
+-
+-            let color: Color = color.parse().expect("Color should exist");
+-            let number: usize = number.parse().expect("Number of cubes should make sense");
+-
+-            cubes.insert(color, number);
++            let color: Color = cube
++                .parse()
++                .expect("Cube should be a pair (number, color) but was {cube}");
++
++            match color {
++                Color::Red(x) => red = x,
++                Color::Green(x) => green = x,
++                Color::Blue(x) => blue = x,
++            }
+        }
+
+-        let set = Set { cubes };
++        let set = Set { red, green, blue };
+         sets.push(set);
+    }
+```
+
+For the error handling part, it is not very worth it to show the diffs, but it is
+worth it to mention that by flattening our iterators we avoid crashing during
+runtime. Errors are then logged so that we can see what may have gone wrong.
+
+The whole code now reads as follows:
+
+```rust
+use std::str::FromStr;
+
+use anyhow::{anyhow, Result};
+
+const INPUT: &str = include_str!("../input.txt");
+
+const RED_CUBES: usize = 12;
+const GREEN_CUBES: usize = 13;
+const BLUE_CUBES: usize = 14;
+
+#[derive(Debug)]
+enum Color {
+    Red(usize),
+    Green(usize),
+    Blue(usize),
+}
+
+impl FromStr for Color {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let (num, color) = s
+            .split_once(' ')
+            .ok_or(anyhow!("Incorrect syntax for parsing {s}"))?;
+
+        let num = num.parse()?;
+
+        match color {
+            "red" => Ok(Self::Red(num)),
+            "green" => Ok(Self::Green(num)),
+            "blue" => Ok(Self::Blue(num)),
+            _ => Err(anyhow!("Invalid color")),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Set {
+    red: usize,
+    green: usize,
+    blue: usize,
+}
+
+impl Set {
+    fn is_possible(&self) -> bool {
+        self.red <= RED_CUBES && self.green <= GREEN_CUBES && self.blue <= BLUE_CUBES
+    }
+
+    fn get_power(&self) -> usize {
+        self.red * self.green * self.blue
+    }
+}
+
+#[derive(Debug)]
+struct Game<'a> {
+    id: &'a str,
+    sets: Vec<Set>,
+}
+
+impl<'a> Game<'a> {
+    fn is_possible(&self) -> bool {
+        self.sets.iter().all(|set| set.is_possible())
+    }
+
+    fn get_max_of_each_set(&self) -> Set {
+        let max_red = self.sets.iter().map(|set| set.red).max().unwrap_or(0);
+        let max_blue = self.sets.iter().map(|set| set.blue).max().unwrap_or(0);
+        let max_green = self.sets.iter().map(|set| set.green).max().unwrap_or(0);
+
+        Set {
+            red: max_red,
+            blue: max_blue,
+            green: max_green,
+        }
+    }
+}
+
+fn parse_line(line: &str) -> Result<Game> {
+    let line: Vec<&str> = line.split(&[':', ';']).collect();
+
+    let id = line[0]
+        .split(' ')
+        .nth(1)
+        .ok_or(anyhow!("Error parsing id"))?;
+
+    let mut sets = Vec::new();
+
+    for set in &line[1..] {
+        let mut red = 0;
+        let mut green = 0;
+        let mut blue = 0;
+
+        let cubes_as_strings: Vec<&str> = set.split(", ").map(|x| x.trim()).collect();
+
+        for cube in cubes_as_strings {
+            let color: Color = cube.parse()?;
+
+            match color {
+                Color::Red(x) => red = x,
+                Color::Green(x) => green = x,
+                Color::Blue(x) => blue = x,
+            }
+        }
+
+        let set = Set { red, green, blue };
+        sets.push(set);
+    }
+
+    Ok(Game { id, sets })
+}
+
+pub fn solve_part_one(contents: &str) -> usize {
+    contents
+        .lines()
+        .flat_map(|line| {
+            parse_line(line).map_err(|e| {
+                eprintln!("ERROR: Failed to parse line '{line}': {e}");
+                e
+            })
+        })
+        .filter(|game| game.is_possible())
+        .flat_map(|game| {
+            game.id.parse::<usize>().map_err(|e| {
+                eprintln!("ERROR: Id '{}' can't be parsed into int: {e}", game.id);
+                e
+            })
+        })
+        .sum()
+}
+
+pub fn solve_part_two(contents: &str) -> usize {
+    contents
+        .lines()
+        .flat_map(|line| {
+            parse_line(line).map_err(|e| {
+                eprintln!("ERROR: Failed to parse line '{line}': {e}");
+                e
+            })
+        })
+        .map(|game| game.get_max_of_each_set())
+        .map(|game| game.get_power())
+        .sum()
+}
+fn main() {
+    println!("{}", solve_part_one(INPUT));
+    println!("{}", solve_part_two(INPUT));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const TEST: &str = include_str!("../test_input.txt");
+
+    #[test]
+    fn it_works() {
+        let line = "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green";
+        println!("{:?}", parse_line(line));
+    }
+
+    #[test]
+    fn part_one() {
+        assert_eq!(solve_part_one(TEST), 8)
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST), 2286)
+    }
+}
+```
