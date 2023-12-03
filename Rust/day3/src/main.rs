@@ -79,6 +79,14 @@ fn parse_contents(contents: &str) -> Schematic {
     let mut numbers = vec![];
     let mut symbols = vec![];
 
+    let columns = contents
+        .lines()
+        .next()
+        .expect("File should not be empty")
+        .len();
+
+    let mut digits_buffer = Vec::with_capacity(columns);
+
     for (i, line) in contents.lines().enumerate() {
         let entries = parse_line(line);
 
@@ -96,6 +104,7 @@ fn parse_contents(contents: &str) -> Schematic {
 
         let grouped_digits = entries
             .iter()
+            .copied()
             .enumerate()
             .group_by(|(_, e)| matches!(e, Entry::Digit(_)));
 
@@ -103,7 +112,9 @@ fn parse_contents(contents: &str) -> Schematic {
             if !k {
                 None
             } else {
-                let g: Vec<(usize, &Entry)> = g.collect();
+                digits_buffer.extend(g);
+
+                let g = &digits_buffer;
                 let n = g.len();
 
                 let mut g = g.iter().peekable();
@@ -112,10 +123,12 @@ fn parse_contents(contents: &str) -> Schematic {
                 let mut number = 0;
                 for (k, entry) in g.enumerate() {
                     match entry.1 {
-                        Entry::Digit(x) => number += 10_usize.pow((n - k - 1) as u32) * *x as usize,
+                        Entry::Digit(x) => number += 10_usize.pow((n - k - 1) as u32) * x as usize,
                         _ => unreachable!(),
                     }
                 }
+
+                digits_buffer.clear();
 
                 Some(PositionNumber {
                     len: n,
