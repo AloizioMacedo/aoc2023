@@ -119,11 +119,10 @@ fn parse_contents(contents: &str) -> Schematic {
                 let g = &digits_buffer;
                 let n = g.len();
 
-                let mut g = g.iter().peekable();
-                let start_col = g.peek().unwrap().0;
+                let start_col = g[0].0;
 
                 let mut number = 0;
-                for (k, entry) in g.enumerate() {
+                for (k, entry) in g.iter().enumerate() {
                     match entry.1 {
                         Entry::Digit(x) => number += 10_usize.pow((n - k - 1) as u32) * x as usize,
                         _ => unreachable!(),
