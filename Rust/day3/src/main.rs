@@ -1,7 +1,8 @@
-use anyhow::Result;
+use itertools::Itertools;
 
-const INPUT: &str = include_str!("../test_input.txt");
+const INPUT: &str = include_str!("../input.txt");
 
+#[derive(Clone, Copy)]
 enum Entry {
     Empty,
     Symbol(char),
@@ -49,6 +50,13 @@ impl PositionNumber {
 struct PositionSymbol {
     col: usize,
     line: usize,
+    symbol: char,
+}
+
+impl PositionSymbol {
+    fn get_numbers_close(&self, pns: &[PositionNumber]) -> Vec<PositionNumber> {
+        pns.iter().copied().filter(|pn| pn.is_close(self)).collect()
+    }
 }
 
 #[derive(Debug)]
@@ -74,27 +82,60 @@ fn parse_contents(contents: &str) -> Schematic {
     for (i, line) in contents.lines().enumerate() {
         let entries = parse_line(line);
 
-        let mut digit_buffer: Vec<u32> = vec![];
-        for (j, entry) in entries.iter().enumerate() {
-            match entry {
-                Entry::Empty => (),
-                Entry::Symbol(_) => {
-                    let pos = PositionSymbol { col: j, line: i };
-                    symbols.push(pos);
-                }
-                Entry::Digit(x) => {
-                    let len = (*x as f64).log10() as usize;
-
-                    let pos = PositionNumber {
-                        start_col: j,
-                        len,
+        let pos_symbols: Vec<PositionSymbol> = entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| matches!(e, Entry::Symbol(_)))
+            .map(|(j, e)| {
+                if let Entry::Symbol(x) = e {
+                    PositionSymbol {
                         line: i,
-                        number: *x,
-                    };
-                    numbers.push(pos);
+                        col: j,
+                        symbol: *x,
+                    }
+                } else {
+                    unreachable!()
                 }
-            }
-        }
+            })
+            .collect();
+
+        let pos_numbers: Vec<PositionNumber> = entries
+            .iter()
+            .enumerate()
+            .group_by(|(_, e)| matches!(e, Entry::Digit(_)))
+            .into_iter()
+            .flat_map(|(k, g)| {
+                if !k {
+                    None
+                } else {
+                    let g: Vec<(usize, &Entry)> = g.collect();
+                    let n = g.len();
+
+                    let mut g = g.iter().peekable();
+                    let start_col = g.peek().unwrap().0;
+
+                    let mut number = 0;
+                    for (k, entry) in g.enumerate() {
+                        match entry.1 {
+                            Entry::Digit(x) => {
+                                number += 10_usize.pow((n - k - 1) as u32) * *x as usize
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    Some(PositionNumber {
+                        len: n,
+                        start_col,
+                        line: i,
+                        number: number as u32,
+                    })
+                }
+            })
+            .collect();
+
+        numbers.extend(pos_numbers);
+        symbols.extend(pos_symbols);
     }
 
     Schematic { numbers, symbols }
@@ -106,7 +147,6 @@ fn parse_line(line: &str) -> Vec<Entry> {
 
 fn solve_part_one(contents: &str) -> u32 {
     let schematic = parse_contents(contents);
-    println!("{:?}", schematic);
 
     schematic
         .get_part_numbers()
@@ -115,8 +155,30 @@ fn solve_part_one(contents: &str) -> u32 {
         .sum()
 }
 
+fn solve_part_two(contents: &str) -> u32 {
+    let schematic = parse_contents(contents);
+
+    let symbols = schematic.symbols;
+
+    symbols
+        .iter()
+        .filter(|symbol| symbol.symbol == '*')
+        .filter_map(|symbol| {
+            let numbers_close = symbol.get_numbers_close(&schematic.numbers);
+
+            if numbers_close.len() == 2 {
+                Some(numbers_close)
+            } else {
+                None
+            }
+        })
+        .map(|numbers_close| numbers_close.iter().map(|x| x.number).product::<u32>())
+        .sum()
+}
+
 fn main() {
-    println!("Hello, world!");
+    println!("{}", solve_part_one(INPUT));
+    println!("{}", solve_part_two(INPUT));
 }
 
 #[cfg(test)]
@@ -127,5 +189,10 @@ mod tests {
     #[test]
     fn it_works() {
         assert_eq!(solve_part_one(TEST_INPUT), 4361);
+    }
+
+    #[test]
+    fn it_works2() {
+        assert_eq!(solve_part_two(TEST_INPUT), 467835);
     }
 }
