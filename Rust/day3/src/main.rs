@@ -46,7 +46,7 @@ impl PositionNumber {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct PositionSymbol {
     col: usize,
     line: usize,
@@ -54,8 +54,11 @@ struct PositionSymbol {
 }
 
 impl PositionSymbol {
-    fn get_numbers_close(&self, pns: &[PositionNumber]) -> Vec<PositionNumber> {
-        pns.iter().copied().filter(|pn| pn.is_close(self)).collect()
+    fn get_numbers_close(
+        self,
+        pns: &[PositionNumber],
+    ) -> impl Iterator<Item = PositionNumber> + '_ {
+        pns.iter().copied().filter(move |pn| pn.is_close(&self))
     }
 }
 
@@ -66,12 +69,11 @@ struct Schematic {
 }
 
 impl Schematic {
-    fn get_part_numbers(&self) -> Vec<PositionNumber> {
+    fn get_part_numbers(&self) -> impl Iterator<Item = PositionNumber> + '_ {
         self.numbers
             .iter()
             .copied()
             .filter(|pn| self.symbols.iter().any(|s| pn.is_close(s)))
-            .collect()
     }
 }
 
@@ -153,11 +155,7 @@ fn parse_line(line: &str) -> Vec<Entry> {
 fn solve_part_one(contents: &str) -> u32 {
     let schematic = parse_contents(contents);
 
-    schematic
-        .get_part_numbers()
-        .iter()
-        .map(|pn| pn.number)
-        .sum()
+    schematic.get_part_numbers().map(|pn| pn.number).sum()
 }
 
 fn solve_part_two(contents: &str) -> u32 {
@@ -171,13 +169,13 @@ fn solve_part_two(contents: &str) -> u32 {
         .filter_map(|symbol| {
             let numbers_close = symbol.get_numbers_close(&schematic.numbers);
 
-            if numbers_close.len() == 2 {
-                Some(numbers_close)
+            if let Some((x, y)) = numbers_close.collect_tuple() {
+                Some((x, y))
             } else {
                 None
             }
         })
-        .map(|numbers_close| numbers_close.iter().map(|x| x.number).product::<u32>())
+        .map(|numbers_close| numbers_close.0.number * numbers_close.1.number)
         .sum()
 }
 
