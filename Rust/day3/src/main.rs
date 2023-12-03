@@ -82,57 +82,49 @@ fn parse_contents(contents: &str) -> Schematic {
     for (i, line) in contents.lines().enumerate() {
         let entries = parse_line(line);
 
-        let pos_symbols: Vec<PositionSymbol> = entries
+        let pos_symbols = entries.iter().enumerate().filter_map(|(j, e)| {
+            if let Entry::Symbol(x) = e {
+                Some(PositionSymbol {
+                    line: i,
+                    col: j,
+                    symbol: *x,
+                })
+            } else {
+                None
+            }
+        });
+
+        let grouped_digits = entries
             .iter()
             .enumerate()
-            .filter(|(_, e)| matches!(e, Entry::Symbol(_)))
-            .map(|(j, e)| {
-                if let Entry::Symbol(x) = e {
-                    PositionSymbol {
-                        line: i,
-                        col: j,
-                        symbol: *x,
+            .group_by(|(_, e)| matches!(e, Entry::Digit(_)));
+
+        let pos_numbers = grouped_digits.into_iter().flat_map(|(k, g)| {
+            if !k {
+                None
+            } else {
+                let g: Vec<(usize, &Entry)> = g.collect();
+                let n = g.len();
+
+                let mut g = g.iter().peekable();
+                let start_col = g.peek().unwrap().0;
+
+                let mut number = 0;
+                for (k, entry) in g.enumerate() {
+                    match entry.1 {
+                        Entry::Digit(x) => number += 10_usize.pow((n - k - 1) as u32) * *x as usize,
+                        _ => unreachable!(),
                     }
-                } else {
-                    unreachable!()
                 }
-            })
-            .collect();
 
-        let pos_numbers: Vec<PositionNumber> = entries
-            .iter()
-            .enumerate()
-            .group_by(|(_, e)| matches!(e, Entry::Digit(_)))
-            .into_iter()
-            .flat_map(|(k, g)| {
-                if !k {
-                    None
-                } else {
-                    let g: Vec<(usize, &Entry)> = g.collect();
-                    let n = g.len();
-
-                    let mut g = g.iter().peekable();
-                    let start_col = g.peek().unwrap().0;
-
-                    let mut number = 0;
-                    for (k, entry) in g.enumerate() {
-                        match entry.1 {
-                            Entry::Digit(x) => {
-                                number += 10_usize.pow((n - k - 1) as u32) * *x as usize
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-
-                    Some(PositionNumber {
-                        len: n,
-                        start_col,
-                        line: i,
-                        number: number as u32,
-                    })
-                }
-            })
-            .collect();
+                Some(PositionNumber {
+                    len: n,
+                    start_col,
+                    line: i,
+                    number: number as u32,
+                })
+            }
+        });
 
         numbers.extend(pos_numbers);
         symbols.extend(pos_symbols);
