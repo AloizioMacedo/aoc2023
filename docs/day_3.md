@@ -10,7 +10,7 @@ Before displaying it, let's first think about the main problems/insights:
   considering that we wanted to parse everything: the numbers, the symbols and the
   empty spaces.
 - The full time complexity of the algorithm, if you simply disregard optimizing how
-  we check who is close, is $O(n^2)$. Gladly this was not a problem at all.
+  we check who is close, is \\(O(n^2)\\). Gladly this was not a problem at all.
 
 The next step is going to be refactoring the whole thing, both for performance and
 readability. This is the version of the code used for the submission itself:
@@ -434,8 +434,13 @@ But it might be worthwhile to say how we would accomplish this:
 1. When checking for who is close, we just iterate over of the matrix
    indices of the neighbors to check for numbers.
 
-This reduces the complexity since get_numbers_close would now be $O(1)$ instead of
-$O(n)$.
+This reduces the complexity since get_numbers_close would now be \\(O(1)\\) instead of
+\\(O(n)\\).
+
+> If we decided to check adjacencies while parsing, we would be able to avoid the
+> creation of the matrix, thus getting the time complexity improvement "for free".
+> However, I want to keep the transformational aspect of the algorithm, i.e. preserve
+> the transformation of input into internal data structure and only then processing it.
 
 In the refactoring, however, we removed a lot of heap allocation and one unnecessary
 unreachable.
