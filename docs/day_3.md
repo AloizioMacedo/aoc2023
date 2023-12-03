@@ -1,0 +1,217 @@
+# Day 3
+
+The code for this day ended up being very unwieldy and will require heavy refactoring.
+
+Before displaying it, let's first think about the main problems/insights:
+
+- First of all, while building a matrix might seem like the first idea, it was much
+  simpler to store the position of numbers and symbols separately.
+- Building the numbers from the parsing was a little bit uncomfortable, particularly
+  considering that we wanted to parse everything: the numbers, the symbols and the
+  empty spaces.
+- The full time complexity of the algorithm, if you simply disregard optimizing how
+  we check who is close, is $O(n^2)$. Gladly this was not a problem at all.
+
+The next step is going to be refactoring the whole thing, both for performance and
+readability. This is the version of the code used for the submission itself:
+
+```rust
+use itertools::Itertools;
+
+const INPUT: &str = include_str!("../input.txt");
+
+#[derive(Clone, Copy)]
+enum Entry {
+    Empty,
+    Symbol(char),
+    Digit(u32),
+}
+
+impl From<char> for Entry {
+    fn from(value: char) -> Self {
+        let parsed_value = value.to_digit(10);
+
+        if let Some(x) = parsed_value {
+            Self::Digit(x)
+        } else {
+            match value {
+                '.' => Entry::Empty,
+                x => Entry::Symbol(x),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PositionNumber {
+    start_col: usize,
+    line: usize,
+    len: usize,
+    number: u32,
+}
+
+impl PositionNumber {
+    fn is_close(&self, symbol: &PositionSymbol) -> bool {
+        for i in 0..self.len {
+            if (self.start_col + i).abs_diff(symbol.col) <= 1
+                && (self.line).abs_diff(symbol.line) <= 1
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
+struct PositionSymbol {
+    col: usize,
+    line: usize,
+    symbol: char,
+}
+
+impl PositionSymbol {
+    fn get_numbers_close(&self, pns: &[PositionNumber]) -> Vec<PositionNumber> {
+        pns.iter().copied().filter(|pn| pn.is_close(self)).collect()
+    }
+}
+
+#[derive(Debug)]
+struct Schematic {
+    numbers: Vec<PositionNumber>,
+    symbols: Vec<PositionSymbol>,
+}
+
+impl Schematic {
+    fn get_part_numbers(&self) -> Vec<PositionNumber> {
+        self.numbers
+            .iter()
+            .copied()
+            .filter(|pn| self.symbols.iter().any(|s| pn.is_close(s)))
+            .collect()
+    }
+}
+
+fn parse_contents(contents: &str) -> Schematic {
+    let mut numbers = vec![];
+    let mut symbols = vec![];
+
+    for (i, line) in contents.lines().enumerate() {
+        let entries = parse_line(line);
+
+        let pos_symbols: Vec<PositionSymbol> = entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| matches!(e, Entry::Symbol(_)))
+            .map(|(j, e)| {
+                if let Entry::Symbol(x) = e {
+                    PositionSymbol {
+                        line: i,
+                        col: j,
+                        symbol: *x,
+                    }
+                } else {
+                    unreachable!()
+                }
+            })
+            .collect();
+
+        let pos_numbers: Vec<PositionNumber> = entries
+            .iter()
+            .enumerate()
+            .group_by(|(_, e)| matches!(e, Entry::Digit(_)))
+            .into_iter()
+            .flat_map(|(k, g)| {
+                if !k {
+                    None
+                } else {
+                    let g: Vec<(usize, &Entry)> = g.collect();
+                    let n = g.len();
+
+                    let mut g = g.iter().peekable();
+                    let start_col = g.peek().unwrap().0;
+
+                    let mut number = 0;
+                    for (k, entry) in g.enumerate() {
+                        match entry.1 {
+                            Entry::Digit(x) => {
+                                number += 10_usize.pow((n - k - 1) as u32) * *x as usize
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    Some(PositionNumber {
+                        len: n,
+                        start_col,
+                        line: i,
+                        number: number as u32,
+                    })
+                }
+            })
+            .collect();
+
+        numbers.extend(pos_numbers);
+        symbols.extend(pos_symbols);
+    }
+
+    Schematic { numbers, symbols }
+}
+
+fn parse_line(line: &str) -> Vec<Entry> {
+    line.chars().map(Entry::from).collect()
+}
+
+fn solve_part_one(contents: &str) -> u32 {
+    let schematic = parse_contents(contents);
+
+    schematic
+        .get_part_numbers()
+        .iter()
+        .map(|pn| pn.number)
+        .sum()
+}
+
+fn solve_part_two(contents: &str) -> u32 {
+    let schematic = parse_contents(contents);
+
+    let symbols = schematic.symbols;
+
+    symbols
+        .iter()
+        .filter(|symbol| symbol.symbol == '*')
+        .filter_map(|symbol| {
+            let numbers_close = symbol.get_numbers_close(&schematic.numbers);
+
+            if numbers_close.len() == 2 {
+                Some(numbers_close)
+            } else {
+                None
+            }
+        })
+        .map(|numbers_close| numbers_close.iter().map(|x| x.number).product::<u32>())
+        .sum()
+}
+
+fn main() {
+    println!("{}", solve_part_one(INPUT));
+    println!("{}", solve_part_two(INPUT));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const TEST_INPUT: &str = include_str!("../test_input.txt");
+
+    #[test]
+    fn it_works() {
+        assert_eq!(solve_part_one(TEST_INPUT), 4361);
+    }
+
+    #[test]
+    fn it_works2() {
+        assert_eq!(solve_part_two(TEST_INPUT), 467835);
+    }
+}
+```
