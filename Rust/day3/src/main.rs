@@ -125,7 +125,7 @@ fn parse_contents(contents: &str) -> Schematic {
                 for (k, entry) in g.iter().enumerate() {
                     match entry.1 {
                         Entry::Digit(x) => number += 10_usize.pow((n - k - 1) as u32) * x as usize,
-                        _ => unreachable!(),
+                        _ => unreachable!("Groups have been filtered to only contain digits"),
                     }
                 }
 
