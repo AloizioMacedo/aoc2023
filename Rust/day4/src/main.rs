@@ -78,11 +78,7 @@ fn solve_part_two(contents: &str) -> Result<u32> {
         let amounts_at_i = *cards_amounts.get(i).unwrap_or(&0);
 
         for j in 0..n.min(cards.len() - 1) {
-            if let Some(x) = cards_amounts.get_mut((i + 1) + j) {
-                *x += amounts_at_i
-            } else {
-                cards_amounts.push(amounts_at_i)
-            }
+            cards_amounts[(i + 1) + j] += amounts_at_i;
         }
     }
 
