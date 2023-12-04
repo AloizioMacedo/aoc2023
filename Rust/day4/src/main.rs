@@ -4,7 +4,7 @@ const INPUT: &str = include_str!("../input.txt");
 
 #[derive(Debug)]
 struct Card {
-    id: i32,
+    _id: i32,
     winning_numbers: Vec<i32>,
     my_numbers: Vec<i32>,
 }
@@ -26,7 +26,7 @@ fn parse_line(line: &str) -> Result<Card> {
         .split_once(' ')
         .ok_or(anyhow!("Syntax error"))?;
 
-    let id: i32 = id.trim().parse()?;
+    let _id: i32 = id.trim().parse()?;
 
     let (winning_numbers, my_numbers) = numbers.split_once('|').ok_or(anyhow!("Syntax error"))?;
 
@@ -41,7 +41,7 @@ fn parse_line(line: &str) -> Result<Card> {
         .collect();
 
     Ok(Card {
-        id,
+        _id,
         winning_numbers,
         my_numbers,
     })
