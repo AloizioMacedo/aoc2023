@@ -20,24 +20,38 @@ impl Card {
 }
 
 fn parse_line(line: &str) -> Result<Card> {
-    let (card_identification, numbers) = line.split_once(':').ok_or(anyhow!("Syntax error"))?;
+    let (card_identification, numbers) = line
+        .split_once(':')
+        .ok_or(anyhow!("ERROR: Syntax error at line '{line}''"))?;
 
-    let (_, id) = card_identification
-        .split_once(' ')
-        .ok_or(anyhow!("Syntax error"))?;
+    let (_, id) = card_identification.split_once(' ').ok_or(anyhow!(
+        "ERROR: Syntax error with identification '{card_identification}'"
+    ))?;
 
     let _id: i32 = id.trim().parse()?;
 
-    let (winning_numbers, my_numbers) = numbers.split_once('|').ok_or(anyhow!("Syntax error"))?;
+    let (winning_numbers, my_numbers) = numbers.split_once('|').ok_or(anyhow!(
+        "ERROR: Syntax error when splitting numbers '{line}'"
+    ))?;
 
     let winning_numbers = winning_numbers
         .split_whitespace()
-        .flat_map(|n| n.parse())
+        .flat_map(|n| {
+            n.parse().map_err(|e| {
+                eprintln!("ERROR: Parse error when parsing {n} to i32");
+                e
+            })
+        })
         .collect();
 
     let my_numbers = my_numbers
         .split_whitespace()
-        .flat_map(|n| n.parse())
+        .flat_map(|n| {
+            n.parse().map_err(|e| {
+                eprintln!("ERROR: Parse error when parsing {n} to i32");
+                e
+            })
+        })
         .collect();
 
     Ok(Card {
