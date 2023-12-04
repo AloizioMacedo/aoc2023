@@ -75,10 +75,9 @@ fn solve_part_two(contents: &str) -> Result<u32> {
 
     for i in 0..cards.len() {
         let n = cards[i].get_my_winning().len();
-        let amounts_at_i = *cards_amounts.get(i).unwrap_or(&0);
 
         for j in 0..n.min(cards.len() - 1) {
-            cards_amounts[(i + 1) + j] += amounts_at_i;
+            cards_amounts[(i + 1) + j] += cards_amounts[i];
         }
     }
 
