@@ -20,7 +20,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestPartOne(t *testing.T) {
-	if solve_part_one("test_input.txt") != 142 {
+	if solve_part_one("test_input_p1.txt") != 142 {
 		t.Fail()
 	}
 }
@@ -32,8 +32,8 @@ func TestNewParse(t *testing.T) {
 }
 
 func TestPartTwo(t *testing.T) {
-	if solve_part_two("test_part_two.txt") != 281 {
-		println(solve_part_two("test_part_two.txt"))
+	if solve_part_two("test_input_p2.txt") != 281 {
+		println(solve_part_two("test_input_p2.txt"))
 		t.Fail()
 	}
 }
