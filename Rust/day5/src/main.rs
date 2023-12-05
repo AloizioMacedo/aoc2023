@@ -35,6 +35,16 @@ impl<'a> BlockData<'a> {
 
         from
     }
+
+    fn reverse_map(&self, to: i64) -> i64 {
+        for number in &self.numbers {
+            if to >= number.destination && to < number.destination + number.range as i64 {
+                return to - number.destination + number.source;
+            }
+        }
+
+        to
+    }
 }
 
 fn parse_block(block: &str) -> Result<BlockData> {
@@ -136,6 +146,32 @@ pub fn solve_part_two(contents: &str) -> Result<i64> {
     Ok(final_locations)
 }
 
+pub fn solve_part_two_reversing(contents: &str) -> Result<i64> {
+    let (seeds, blocks) = parse_contents(contents)?;
+    // let seeds = convert_seed_ranges_into_seeds(&seeds);
+
+    for i in 0.. {
+        let mut attempt = i;
+
+        for block in blocks.iter().rev() {
+            attempt = block.reverse_map(attempt);
+        }
+
+        for seed_chunk in seeds.chunks_exact(2) {
+            let (start, range) = seed_chunk
+                .iter()
+                .collect_tuple()
+                .expect("Chunk should be two-sized");
+
+            if attempt >= *start && attempt < start + range {
+                return Ok(i);
+            }
+        }
+    }
+
+    Err(anyhow!("Unable to find best location"))
+}
+
 // Leaving this here as it illustrates that allocation messed up the brute force
 // approach.
 fn _convert_seed_ranges_into_seeds(seed_ranges: &[i64]) -> Vec<i64> {
@@ -155,7 +191,7 @@ fn _convert_seed_ranges_into_seeds(seed_ranges: &[i64]) -> Vec<i64> {
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
-    println!("{}", solve_part_two(INPUT)?);
+    println!("{}", solve_part_two_reversing(INPUT)?);
 
     Ok(())
 }
@@ -173,5 +209,10 @@ mod tests {
     #[test]
     fn part_two() {
         assert_eq!(solve_part_two(TEST_INPUT).unwrap(), 46);
+    }
+
+    #[test]
+    fn part_two_reversing() {
+        assert_eq!(solve_part_two_reversing(TEST_INPUT).unwrap(), 46);
     }
 }
