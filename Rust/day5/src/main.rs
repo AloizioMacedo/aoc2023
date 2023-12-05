@@ -109,28 +109,36 @@ pub fn solve_part_one(contents: &str) -> Result<i64> {
 
 pub fn solve_part_two(contents: &str) -> Result<i64> {
     let (seeds, blocks) = parse_contents(contents)?;
-    let seeds = convert_seed_ranges_into_seeds(&seeds);
+    // let seeds = convert_seed_ranges_into_seeds(&seeds);
 
-    let mut final_locations = Vec::new();
+    let mut final_locations = i64::MAX;
 
-    for seed in seeds {
-        let mut seed_mapping = seed;
+    for seed_chunk in seeds.chunks_exact(2) {
+        let (start, range) = seed_chunk
+            .iter()
+            .collect_tuple()
+            .expect("Chunk should be two-sized");
 
-        for block in &blocks {
-            seed_mapping = block.map(seed_mapping);
+        for i in 0..(*range as usize) {
+            let seed = start + i as i64;
+            let mut seed_mapping = seed;
+
+            for block in &blocks {
+                seed_mapping = block.map(seed_mapping);
+            }
+
+            if seed_mapping < final_locations {
+                final_locations = seed_mapping
+            }
         }
-
-        final_locations.push(seed_mapping);
     }
 
-    final_locations
-        .iter()
-        .copied()
-        .min()
-        .ok_or(anyhow!("Empty locations"))
+    Ok(final_locations)
 }
 
-fn convert_seed_ranges_into_seeds(seed_ranges: &[i64]) -> Vec<i64> {
+// Leaving this here as it illustrates that allocation messed up the brute force
+// approach.
+fn _convert_seed_ranges_into_seeds(seed_ranges: &[i64]) -> Vec<i64> {
     seed_ranges.chunks_exact(2).fold(vec![], |mut acc, chunk| {
         let (start, range) = chunk
             .iter()
