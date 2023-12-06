@@ -150,6 +150,17 @@ pub fn solve_part_two_reversing(contents: &str) -> Result<i64> {
     let (seeds, blocks) = parse_contents(contents)?;
     // let seeds = convert_seed_ranges_into_seeds(&seeds);
 
+    let chunks: Vec<(i64, i64)> = seeds
+        .chunks_exact(2)
+        .map(|chunk| {
+            chunk
+                .iter()
+                .copied()
+                .collect_tuple()
+                .expect("Chunk should be two-sized")
+        })
+        .collect();
+
     for i in 0.. {
         let mut attempt = i;
 
@@ -157,12 +168,7 @@ pub fn solve_part_two_reversing(contents: &str) -> Result<i64> {
             attempt = block.reverse_map(attempt);
         }
 
-        for seed_chunk in seeds.chunks_exact(2) {
-            let (start, range) = seed_chunk
-                .iter()
-                .collect_tuple()
-                .expect("Chunk should be two-sized");
-
+        for (start, range) in &chunks {
             if attempt >= *start && attempt < start + range {
                 return Ok(i);
             }
