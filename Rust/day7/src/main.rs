@@ -204,19 +204,32 @@ impl TryFrom<char> for CardWithJoker {
     }
 }
 
+trait HandGenerator<T> {
+    fn new(cards: [T; 5], bid: u64) -> Self;
+}
+
 #[derive(Debug)]
-struct Hand {
-    cards: [Card; 5],
+struct Hand<T> {
+    cards: [T; 5],
     bid: u64,
 }
 
-impl PartialOrd for Hand {
+impl<T> HandGenerator<T> for Hand<T>
+where
+    T: TryFrom<char>,
+{
+    fn new(cards: [T; 5], bid: u64) -> Hand<T> {
+        Hand { cards, bid }
+    }
+}
+
+impl PartialOrd for Hand<Card> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for Hand {
+impl Ord for Hand<Card> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let self_type = get_type(self.cards);
         let other_type = get_type(other.cards);
@@ -228,7 +241,7 @@ impl Ord for Hand {
     }
 }
 
-impl PartialEq for Hand {
+impl PartialEq for Hand<Card> {
     fn eq(&self, other: &Self) -> bool {
         let mut my_cards = self.cards;
         let mut your_cards = other.cards;
@@ -240,21 +253,15 @@ impl PartialEq for Hand {
     }
 }
 
-impl Eq for Hand {}
+impl Eq for Hand<Card> {}
 
-#[derive(Debug)]
-struct HandWithJoker {
-    cards: [CardWithJoker; 5],
-    bid: u64,
-}
-
-impl PartialOrd for HandWithJoker {
+impl PartialOrd for Hand<CardWithJoker> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for HandWithJoker {
+impl Ord for Hand<CardWithJoker> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let self_type = get_type_with_joker(self.cards);
         let other_type = get_type_with_joker(other.cards);
@@ -266,7 +273,7 @@ impl Ord for HandWithJoker {
     }
 }
 
-impl PartialEq for HandWithJoker {
+impl PartialEq for Hand<CardWithJoker> {
     fn eq(&self, other: &Self) -> bool {
         let mut my_cards = self.cards;
         let mut your_cards = other.cards;
@@ -278,52 +285,37 @@ impl PartialEq for HandWithJoker {
     }
 }
 
-impl Eq for HandWithJoker {}
+impl Eq for Hand<CardWithJoker> {}
 
-fn parse_contents(contents: &str) -> Result<Vec<Hand>> {
+fn parse_contents<T>(contents: &str) -> Result<Vec<Hand<T>>>
+where
+    T: TryFrom<char>,
+{
     contents.lines().map(parse_line).collect()
 }
 
-fn parse_contents_with_joker(contents: &str) -> Result<Vec<HandWithJoker>> {
-    contents.lines().map(parse_line_with_joker).collect()
-}
-
-fn parse_line(line: &str) -> Result<Hand> {
+fn parse_line<T>(line: &str) -> Result<Hand<T>>
+where
+    T: TryFrom<char>,
+{
     let (cards, bid) = line
         .split_once(' ')
         .ok_or(anyhow!("Syntax error in '{line}'"))?;
 
     let (card1, card2, card3, card4, card5) = cards
         .chars()
-        .flat_map(Card::try_from)
+        .flat_map(T::try_from)
         .collect_tuple()
         .ok_or(anyhow!("Syntax error in '{line}'"))?;
     let cards = [card1, card2, card3, card4, card5];
 
     let bid = bid.parse()?;
 
-    Ok(Hand { cards, bid })
-}
-
-fn parse_line_with_joker(line: &str) -> Result<HandWithJoker> {
-    let (cards, bid) = line
-        .split_once(' ')
-        .ok_or(anyhow!("Syntax error in '{line}'"))?;
-
-    let (card1, card2, card3, card4, card5) = cards
-        .chars()
-        .flat_map(CardWithJoker::try_from)
-        .collect_tuple()
-        .ok_or(anyhow!("Syntax error in '{line}'"))?;
-    let cards = [card1, card2, card3, card4, card5];
-
-    let bid = bid.parse()?;
-
-    Ok(HandWithJoker { cards, bid })
+    Ok(Hand::new(cards, bid))
 }
 
 fn solve_part_one(contents: &str) -> Result<u64> {
-    let mut hands = parse_contents(contents)?;
+    let mut hands = parse_contents::<Card>(contents)?;
 
     hands.sort();
 
@@ -335,7 +327,7 @@ fn solve_part_one(contents: &str) -> Result<u64> {
 }
 
 fn solve_part_two(contents: &str) -> Result<u64> {
-    let mut hands = parse_contents_with_joker(contents)?;
+    let mut hands = parse_contents::<CardWithJoker>(contents)?;
 
     hands.sort();
 
