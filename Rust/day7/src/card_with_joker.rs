@@ -143,6 +143,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn ord() {
+        assert!(CardWithJoker::Number(5) < CardWithJoker::Number(7));
+        assert!(CardWithJoker::Number(5) < CardWithJoker::K);
+        assert!(CardWithJoker::Number(6) > CardWithJoker::Number(3));
+        assert!(CardWithJoker::A > CardWithJoker::T);
+        assert!(CardWithJoker::J < CardWithJoker::Number(3));
+    }
+
+    #[test]
     fn test_matches_with_joker() {
         let cards: [CardWithJoker; 5] = [
             'A'.try_into().unwrap(),

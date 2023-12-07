@@ -93,3 +93,17 @@ impl PartialEq for Hand<Card> {
 }
 
 impl Eq for Hand<Card> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ord() {
+        assert!(Card::Number(5) < Card::Number(7));
+        assert!(Card::Number(5) < Card::K);
+        assert!(Card::Number(6) > Card::Number(3));
+        assert!(Card::A > Card::T);
+        assert!(Card::J > Card::Number(3));
+    }
+}

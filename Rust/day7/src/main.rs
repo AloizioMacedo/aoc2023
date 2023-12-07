@@ -69,20 +69,7 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::card::Card;
-    use crate::card_with_joker::CardWithJoker;
     const TEST_INPUT: &str = include_str!("../test_input.txt");
-
-    #[test]
-    fn ord() {
-        assert!(Card::Number(5) < Card::Number(7));
-        assert!(Card::Number(5) < Card::K);
-        assert!(Card::Number(6) > Card::Number(3));
-        assert!(Card::A > Card::T);
-
-        assert!(Card::J > Card::Number(3));
-        assert!(CardWithJoker::J < CardWithJoker::Number(3));
-    }
 
     #[test]
     fn part_one() {
@@ -92,12 +79,5 @@ mod tests {
     #[test]
     fn part_two() {
         assert_eq!(solve_part_two(TEST_INPUT).unwrap(), 5905);
-    }
-
-    #[test]
-    fn test_count() {
-        let oi = [3, 3, 2, 10, 1, 1];
-
-        assert_eq!(oi.iter().counts().values().len(), 4);
     }
 }
