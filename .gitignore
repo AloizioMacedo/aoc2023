@@ -4,3 +4,4 @@ test_input.txt
 input.txt
 test_input_p1.txt
 test_input_p2.txt
+*__pycache__*
