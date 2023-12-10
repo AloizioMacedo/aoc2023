@@ -1,11 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet},
-    default,
-};
+use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
 use ndarray::Array2;
-use petgraph::{data::Build, graphmap::UnGraphMap};
+use petgraph::graphmap::UnGraphMap;
 
 const INPUT: &str = include_str!("../input.txt");
 const TEST: &str = include_str!("../test_input_p1.txt");
@@ -47,14 +44,7 @@ impl Pipe {
             Pipe::Horizontal => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NW, Pipe::SW],
             Pipe::NE => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NW, Pipe::SW],
             Pipe::SE => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NW, Pipe::SW],
-            Pipe::Origin => vec![
-                Pipe::Vertical,
-                Pipe::Horizontal,
-                Pipe::NE,
-                Pipe::NW,
-                Pipe::SW,
-                Pipe::SE,
-            ],
+            Pipe::Origin => vec![Pipe::Horizontal, Pipe::NW, Pipe::SW],
             _ => vec![],
         }
     }
@@ -64,14 +54,7 @@ impl Pipe {
             Pipe::Horizontal => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NE, Pipe::SE],
             Pipe::NW => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NE, Pipe::SE],
             Pipe::SW => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NE, Pipe::SE],
-            Pipe::Origin => vec![
-                Pipe::Vertical,
-                Pipe::Horizontal,
-                Pipe::NE,
-                Pipe::NW,
-                Pipe::SW,
-                Pipe::SE,
-            ],
+            Pipe::Origin => vec![Pipe::Horizontal, Pipe::NE, Pipe::SE],
             _ => vec![],
         }
     }
@@ -81,14 +64,7 @@ impl Pipe {
             Pipe::Vertical => vec![Pipe::Origin, Pipe::Vertical, Pipe::SE, Pipe::SW],
             Pipe::NE => vec![Pipe::Origin, Pipe::Vertical, Pipe::SE, Pipe::SW],
             Pipe::NW => vec![Pipe::Origin, Pipe::Vertical, Pipe::SE, Pipe::SW],
-            Pipe::Origin => vec![
-                Pipe::Vertical,
-                Pipe::Horizontal,
-                Pipe::NE,
-                Pipe::NW,
-                Pipe::SW,
-                Pipe::SE,
-            ],
+            Pipe::Origin => vec![Pipe::Vertical, Pipe::SW, Pipe::SE],
             _ => vec![],
         }
     }
@@ -98,14 +74,7 @@ impl Pipe {
             Pipe::Vertical => vec![Pipe::Origin, Pipe::Vertical, Pipe::NE, Pipe::NW],
             Pipe::SE => vec![Pipe::Origin, Pipe::Vertical, Pipe::NE, Pipe::NW],
             Pipe::SW => vec![Pipe::Origin, Pipe::Vertical, Pipe::NE, Pipe::NW],
-            Pipe::Origin => vec![
-                Pipe::Vertical,
-                Pipe::Horizontal,
-                Pipe::NE,
-                Pipe::NW,
-                Pipe::SW,
-                Pipe::SE,
-            ],
+            Pipe::Origin => vec![Pipe::Vertical, Pipe::NE, Pipe::NW],
             _ => vec![],
         }
     }
@@ -135,7 +104,7 @@ impl Grid {
                 graph.add_edge((i, j), (i, j - 1), ());
             }
             if j < self.matrix.ncols() - 1
-                && p.get_possible_left().contains(&self.matrix[(i, j + 1)])
+                && p.get_possible_right().contains(&self.matrix[(i, j + 1)])
             {
                 graph.add_edge((i, j), (i, j + 1), ());
             }
@@ -169,30 +138,43 @@ fn parse_contents(contents: &str) -> Result<Grid> {
 
 fn solve_part_one(contents: &str) -> Result<usize> {
     let grid = parse_contents(contents)?;
+    let lp = find_loop(&grid.get_graph(), grid.origin)?;
 
-    todo!()
+    Ok((lp.len() - 1) / 2) // Subtract one to remove the origin.
 }
 
-fn find_loop(graph: &UnGraphMap<(usize, usize), ()>, beginning: (usize, usize)) -> Result<usize> {
-    let mut queue = vec![beginning];
-    let mut visited: HashSet<(usize, usize)> = HashSet::new();
-
-    let mut distances: HashMap<(usize, usize), usize> = HashMap::new();
-    distances.insert(beginning, 0);
+fn find_loop(
+    graph: &UnGraphMap<(usize, usize), ()>,
+    beginning: (usize, usize),
+) -> Result<Vec<(usize, usize)>> {
+    let mut queue = vec![vec![beginning]];
 
     while let Some(next) = queue.pop() {
-        if !visited.insert(next) {
-            return Ok(distances[&next]);
+        let last = *next.last().expect("Paths should not be empty");
+
+        if last == beginning && next.len() > 1 {
+            return Ok(next);
         }
 
         let neighbors: Vec<(usize, usize)> = graph
-            .neighbors(next)
-            .filter(|n| !visited.contains(n))
+            .neighbors(last)
+            .filter(|n| {
+                if next.len() < 2 {
+                    return true;
+                }
+                if let Some(x) = next.get(next.len() - 2) {
+                    n != x
+                } else {
+                    true
+                }
+            })
             .collect();
 
         for neighbor in neighbors {
-            queue.push(neighbor);
-            distances.insert(neighbor, distances[&next] + 1);
+            let mut path = next.clone();
+            path.push(neighbor);
+
+            queue.push(path);
         }
     }
 
@@ -200,12 +182,7 @@ fn find_loop(graph: &UnGraphMap<(usize, usize), ()>, beginning: (usize, usize)) 
 }
 
 fn main() -> Result<()> {
-    let grid = parse_contents(TEST)?;
-
-    let graph = grid.get_graph();
-    println!("{:?}", graph);
-
-    println!("{}", find_loop(&graph, grid.origin)?);
+    println!("{}", solve_part_one(INPUT)?);
 
     Ok(())
 }
