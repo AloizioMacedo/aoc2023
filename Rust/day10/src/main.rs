@@ -1,14 +1,16 @@
-use anyhow::{anyhow, Result};
-use petgraph::{
-    algo::{self},
-    graph,
-    graphmap::UnGraphMap,
+use std::{
+    collections::{HashMap, HashSet},
+    default,
 };
 
-const INPUT: &str = include_str!("../input.txt");
-const TEST: &str = include_str!("../test_input.txt");
+use anyhow::{anyhow, Result};
+use ndarray::Array2;
+use petgraph::{data::Build, graphmap::UnGraphMap};
 
-#[derive(Debug)]
+const INPUT: &str = include_str!("../input.txt");
+const TEST: &str = include_str!("../test_input_p1.txt");
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 enum Pipe {
     Vertical,
     Horizontal,
@@ -17,6 +19,9 @@ enum Pipe {
     SW,
     SE,
     Origin,
+
+    #[default]
+    Empty,
 }
 
 impl TryFrom<char> for Pipe {
@@ -30,7 +35,78 @@ impl TryFrom<char> for Pipe {
             '7' => Ok(Self::SW),
             'F' => Ok(Self::SE),
             'S' => Ok(Self::Origin),
+            '.' => Ok(Self::Empty),
             _ => Err(anyhow!("Invalid pipe")),
+        }
+    }
+}
+
+impl Pipe {
+    fn get_possible_right(&self) -> Vec<Pipe> {
+        match self {
+            Pipe::Horizontal => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NW, Pipe::SW],
+            Pipe::NE => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NW, Pipe::SW],
+            Pipe::SE => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NW, Pipe::SW],
+            Pipe::Origin => vec![
+                Pipe::Vertical,
+                Pipe::Horizontal,
+                Pipe::NE,
+                Pipe::NW,
+                Pipe::SW,
+                Pipe::SE,
+            ],
+            _ => vec![],
+        }
+    }
+
+    fn get_possible_left(&self) -> Vec<Pipe> {
+        match self {
+            Pipe::Horizontal => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NE, Pipe::SE],
+            Pipe::NW => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NE, Pipe::SE],
+            Pipe::SW => vec![Pipe::Origin, Pipe::Horizontal, Pipe::NE, Pipe::SE],
+            Pipe::Origin => vec![
+                Pipe::Vertical,
+                Pipe::Horizontal,
+                Pipe::NE,
+                Pipe::NW,
+                Pipe::SW,
+                Pipe::SE,
+            ],
+            _ => vec![],
+        }
+    }
+
+    fn get_possible_up(&self) -> Vec<Pipe> {
+        match self {
+            Pipe::Vertical => vec![Pipe::Origin, Pipe::Vertical, Pipe::SE, Pipe::SW],
+            Pipe::NE => vec![Pipe::Origin, Pipe::Vertical, Pipe::SE, Pipe::SW],
+            Pipe::NW => vec![Pipe::Origin, Pipe::Vertical, Pipe::SE, Pipe::SW],
+            Pipe::Origin => vec![
+                Pipe::Vertical,
+                Pipe::Horizontal,
+                Pipe::NE,
+                Pipe::NW,
+                Pipe::SW,
+                Pipe::SE,
+            ],
+            _ => vec![],
+        }
+    }
+
+    fn get_possible_down(&self) -> Vec<Pipe> {
+        match self {
+            Pipe::Vertical => vec![Pipe::Origin, Pipe::Vertical, Pipe::NE, Pipe::NW],
+            Pipe::SE => vec![Pipe::Origin, Pipe::Vertical, Pipe::NE, Pipe::NW],
+            Pipe::SW => vec![Pipe::Origin, Pipe::Vertical, Pipe::NE, Pipe::NW],
+            Pipe::Origin => vec![
+                Pipe::Vertical,
+                Pipe::Horizontal,
+                Pipe::NE,
+                Pipe::NW,
+                Pipe::SW,
+                Pipe::SE,
+            ],
+            _ => vec![],
         }
     }
 }
@@ -38,73 +114,98 @@ impl TryFrom<char> for Pipe {
 #[derive(Debug)]
 struct Grid {
     origin: (usize, usize),
-    graph: UnGraphMap<(usize, usize), ()>,
+    matrix: Array2<Pipe>,
+}
+
+impl Grid {
+    fn get_graph(&self) -> UnGraphMap<(usize, usize), ()> {
+        let mut graph = UnGraphMap::new();
+
+        for ((i, j), p) in self.matrix.indexed_iter() {
+            if i > 0 && p.get_possible_up().contains(&self.matrix[(i - 1, j)]) {
+                graph.add_edge((i, j), (i - 1, j), ());
+            }
+            if i < self.matrix.nrows() - 1
+                && p.get_possible_down().contains(&self.matrix[(i + 1, j)])
+            {
+                graph.add_edge((i, j), (i + 1, j), ());
+            }
+
+            if j > 0 && p.get_possible_left().contains(&self.matrix[(i, j - 1)]) {
+                graph.add_edge((i, j), (i, j - 1), ());
+            }
+            if j < self.matrix.ncols() - 1
+                && p.get_possible_left().contains(&self.matrix[(i, j + 1)])
+            {
+                graph.add_edge((i, j), (i, j + 1), ());
+            }
+        }
+
+        graph
+    }
 }
 
 fn parse_contents(contents: &str) -> Result<Grid> {
-    let mut graph: UnGraphMap<(usize, usize), ()> = UnGraphMap::new();
-
     let lines: Vec<&str> = contents.lines().collect();
 
     let n_rows = lines.len();
     let n_cols = lines[0].len();
 
-    let mut origin = (0, 0);
+    let mut matrix: Array2<Pipe> = Array2::default((n_rows, n_cols));
 
+    let mut origin = (0, 0);
     for (i, line) in lines.iter().enumerate() {
         for (j, c) in line.chars().enumerate() {
-            if let Ok(pipe) = Pipe::try_from(c) {
-                let i = i as i32;
-                let j = j as i32;
+            matrix[(i, j)] = Pipe::try_from(c)?;
 
-                let connected_coords = match pipe {
-                    Pipe::Vertical => vec![(i - 1, j), (i + 1, j)],
-                    Pipe::Horizontal => vec![(i, j - 1), (i, j + 1)],
-                    Pipe::NE => vec![(i, j + 1), (i - 1, j)],
-                    Pipe::NW => vec![(i, j - 1), (i - 1, j)],
-                    Pipe::SW => vec![(i + 1, j), (i, j - 1)],
-                    Pipe::SE => vec![(i + 1, j), (i, j + 1)],
-                    Pipe::Origin => vec![(i + 1, j), (i - 1, j), (i, j - 1), (i, j + 1)],
-                };
-
-                if matches!(pipe, Pipe::Origin) {
-                    origin = (i as usize, j as usize);
-                }
-
-                for (i1, j1) in connected_coords {
-                    if (i1 < n_rows as i32) && (j1 < n_cols as i32) {
-                        graph.add_edge((i as usize, j as usize), (i1 as usize, j1 as usize), ());
-                    }
-                }
+            if matches!(matrix[(i, j)], Pipe::Origin) {
+                origin = (i, j);
             }
         }
     }
 
-    Ok(Grid { origin, graph })
+    Ok(Grid { origin, matrix })
 }
 
 fn solve_part_one(contents: &str) -> Result<usize> {
     let grid = parse_contents(contents)?;
-    println!("{:?}", grid);
 
-    let mut bfs = petgraph::visit::Bfs::new(&grid.graph, grid.origin);
+    todo!()
+}
 
-    // while let Some(nx) = bfs.next(&grid.graph) {
-    //   if nx == grid.origin {
-    //        break;
-    //    }
-    //}
+fn find_loop(graph: &UnGraphMap<(usize, usize), ()>, beginning: (usize, usize)) -> Result<usize> {
+    let mut queue = vec![beginning];
+    let mut visited: HashSet<(usize, usize)> = HashSet::new();
 
-    let main_loop: Vec<(usize, usize)> =
-        algo::all_simple_paths(&grid.graph, grid.origin, grid.origin, 2, None)
-            .next()
-            .ok_or(anyhow!("no simple path found"))?;
+    let mut distances: HashMap<(usize, usize), usize> = HashMap::new();
+    distances.insert(beginning, 0);
 
-    Ok(main_loop.len() / 2)
+    while let Some(next) = queue.pop() {
+        if !visited.insert(next) {
+            return Ok(distances[&next]);
+        }
+
+        let neighbors: Vec<(usize, usize)> = graph
+            .neighbors(next)
+            .filter(|n| !visited.contains(n))
+            .collect();
+
+        for neighbor in neighbors {
+            queue.push(neighbor);
+            distances.insert(neighbor, distances[&next] + 1);
+        }
+    }
+
+    Err(anyhow!("ERROR: Loop not found"))
 }
 
 fn main() -> Result<()> {
-    println!("{:?}", solve_part_one(INPUT)?);
+    let grid = parse_contents(TEST)?;
+
+    let graph = grid.get_graph();
+    println!("{:?}", graph);
+
+    println!("{}", find_loop(&graph, grid.origin)?);
 
     Ok(())
 }
@@ -112,7 +213,7 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const TEST: &str = include_str!("../test_input.txt");
+    const TEST: &str = include_str!("../test_input_p1.txt");
 
     #[test]
     fn it_works() {
