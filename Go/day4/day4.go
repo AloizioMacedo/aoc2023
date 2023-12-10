@@ -106,6 +106,32 @@ func solve_part_one(path string) int {
 	return total
 }
 
+func solve_part_two(path string) int {
+	cards := parse_contents(path)
+
+	cards_counts := make([]int, 0)
+	for i := 0; i < len(cards); i++ {
+		cards_counts = append(cards_counts, 1)
+	}
+
+	for i := 0; i < len(cards_counts)-1; i++ {
+		current_card := cards[i]
+		n := current_card.get_count()
+
+		for j := 0; j < min(n, len(cards_counts)); j++ {
+			cards_counts[i+j+1] += cards_counts[i]
+		}
+	}
+
+	total := 0
+	for _, v := range cards_counts {
+		total += v
+	}
+
+	return total
+}
+
 func main() {
 	println(solve_part_one("input.txt"))
+	println(solve_part_two("input.txt"))
 }
