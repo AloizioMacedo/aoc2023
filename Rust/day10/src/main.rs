@@ -1,9 +1,19 @@
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Result};
 use ndarray::Array2;
 use petgraph::graphmap::UnGraphMap;
 
 const INPUT: &str = include_str!("../input.txt");
-const TEST: &str = include_str!("../test_input_p1.txt");
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum Filled {
+    Loop,
+    Filled,
+
+    #[default]
+    Empty,
+}
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 enum Pipe {
@@ -256,8 +266,22 @@ fn scale_up(matrix: &Array2<Pipe>) -> Array2<Pipe> {
     new_array
 }
 
-fn scale_down(matrix: &Array2<Pipe>) -> Array2<Pipe> {
-    todo!()
+fn scale_down<T>(matrix: &Array2<T>) -> Array2<T>
+where
+    T: Clone + Copy + Default,
+{
+    let n_rows = matrix.nrows() / 3;
+    let n_cols = matrix.ncols() / 3;
+
+    let mut new_array = Array2::default((n_rows, n_cols));
+
+    for i in 0..n_rows {
+        for j in 0..n_cols {
+            new_array[(i, j)] = matrix[(3 * i + 1, 3 * j + 1)]
+        }
+    }
+
+    new_array
 }
 
 fn parse_contents(contents: &str) -> Result<Grid> {
@@ -287,6 +311,40 @@ fn solve_part_one(contents: &str) -> Result<usize> {
     let lp = find_loop(&grid.get_graph(), grid.origin)?;
 
     Ok((lp.len() - 1) / 2) // Subtract one to remove the origin.
+}
+
+fn solve_part_two(contents: &str) -> Result<usize> {
+    let grid = parse_contents(contents)?;
+    let lp = find_loop(&grid.get_graph(), grid.origin)?;
+
+    let scaled_up = scale_up(&grid.matrix);
+    let transformed_matrix = transform_matrix(&scaled_up, &lp);
+
+    let filled = flood_fill(&transformed_matrix);
+    let scaled_down = scale_down(&filled);
+
+    // println!("{:?}", scaled_down);
+
+    Ok(scaled_down
+        .iter()
+        .filter(|e| matches!(e, Filled::Empty))
+        .count())
+}
+
+fn transform_matrix(matrix: &Array2<Pipe>, lp: &[(usize, usize)]) -> Array2<Filled> {
+    let mut new_matrix: Array2<Filled> = Array2::default((matrix.nrows(), matrix.ncols()));
+
+    for (i, j) in lp {
+        for h1 in [3 * i, 3 * i + 1, 3 * i + 2] {
+            for h2 in [3 * j, 3 * j + 1, 3 * j + 2] {
+                if !matches!(matrix[(h1, h2)], Pipe::Empty) {
+                    new_matrix[(h1, h2)] = Filled::Loop
+                }
+            }
+        }
+    }
+
+    new_matrix
 }
 
 fn find_loop(
@@ -327,14 +385,50 @@ fn find_loop(
     Err(anyhow!("ERROR: Loop not found"))
 }
 
+fn flood_fill(matrix: &Array2<Filled>) -> Array2<Filled> {
+    let mut visited: HashSet<(usize, usize)> = HashSet::new();
+    let mut queue: Vec<(usize, usize)> = vec![(0, 0)];
+
+    let mut new_array: Array2<Filled> = Array2::default((matrix.nrows(), matrix.ncols()));
+
+    for ((i, j), v) in matrix.indexed_iter() {
+        if let Filled::Loop = v {
+            new_array[(i, j)] = *v
+        }
+    }
+
+    while let Some(next) = queue.pop() {
+        visited.insert(next);
+        new_array[next] = Filled::Filled;
+
+        let (i, j) = next;
+
+        if i > 0 && !matches!(matrix[(i - 1, j)], Filled::Loop) && !visited.contains(&(i - 1, j)) {
+            queue.push((i - 1, j))
+        }
+        if i < matrix.nrows() - 1
+            && !matches!(matrix[(i + 1, j)], Filled::Loop)
+            && !visited.contains(&(i + 1, j))
+        {
+            queue.push((i + 1, j))
+        }
+        if j > 0 && !matches!(matrix[(i, j - 1)], Filled::Loop) && !visited.contains(&(i, j - 1)) {
+            queue.push((i, j - 1))
+        }
+        if j < matrix.ncols() - 1
+            && !matches!(matrix[(i, j + 1)], Filled::Loop)
+            && !visited.contains(&(i, j + 1))
+        {
+            queue.push((i, j + 1))
+        }
+    }
+
+    new_array
+}
+
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
-
-    let grid = parse_contents(TEST)?;
-
-    let scaled_up = scale_up(&grid.matrix);
-
-    println!("{:?}", scaled_up);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
