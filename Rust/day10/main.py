@@ -12,31 +12,34 @@ class Grid:
 def flood_fill(
     matrix: list[list[str]],
     ref: tuple[int, int],
-    visited: set[tuple[int, int]],
 ):
     matrix[ref[0]][ref[1]] = "O"
 
     n_rows = len(matrix)
     n_cols = len(matrix[0])
 
-    nexts = []
-    i, j = ref
+    queue = [ref]
+    visited: set[tuple[int, int]] = set()
 
-    if i - 1 >= 0:
-        nexts.append((i - 1, j))
-    if i + 1 < n_rows:
-        nexts.append((i + 1, j))
-    if j - 1 >= 0:
-        nexts.append((i, j - 1))
-    if j + 1 < n_cols:
-        nexts.append((i, j + 1))
+    while queue:
+        next = queue.pop()
+        visited.add(next)
 
-    nexts = [x for x in nexts if x not in visited and matrix[x[0]][x[1]] == "."]
-    print(nexts)
-    visited.update(nexts)
+        i, j = next
+        matrix[i][j] = "O"
 
-    for e in nexts:
-        flood_fill(matrix, e, visited)
+        if i - 1 >= 0:
+            if (i - 1, j) not in visited and matrix[i - 1][j] == ".":
+                queue.append((i - 1, j))
+        if i + 1 < n_rows:
+            if (i + 1, j) not in visited and matrix[i + 1][j] == ".":
+                queue.append((i + 1, j))
+        if j - 1 >= 0:
+            if (i, j - 1) not in visited and matrix[i][j - 1] == ".":
+                queue.append((i, j - 1))
+        if j + 1 < n_cols:
+            if (i, j + 1) not in visited and matrix[i][j + 1] == ".":
+                queue.append((i, j + 1))
 
 
 def scale_down_matrix(matrix: list[list[str]]) -> list[list[str]]:
@@ -169,12 +172,12 @@ def solve_part_two(contents_as_lst: list[list[str]]) -> int:
 
     matrix = grid.matrix.copy()
 
-    flood_fill(matrix, (0, 0), set())
+    flood_fill(matrix, (0, 0))
 
     scaled_down = scale_down_matrix(matrix)
 
-    for line in scaled_down:
-        print(line)
+    for s in scaled_down:
+        print(s)
 
     counter = 0
     for line in scaled_down:
@@ -194,7 +197,7 @@ def remove_frame(matrix: list[list[str]]) -> list[list[str]]:
 
 
 def main():
-    with open("input.txt") as file:
+    with open("test_input_p2.txt") as file:
         contents = file.read()
 
     contents_as_lst = [list(line) for line in contents.splitlines()]
