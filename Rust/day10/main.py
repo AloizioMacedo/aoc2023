@@ -9,6 +9,34 @@ class Grid:
     matrix: list[list]
 
 
+def flood_fill(
+    matrix: list[list[str]], ref: tuple[int, int], visited: set[tuple[int, int]]
+) -> int:
+    n_rows = len(matrix)
+    n_cols = len(matrix[0])
+
+    nexts = []
+    i, j = ref
+
+    if i - 1 >= 0:
+        nexts.append((i - 1, j))
+    if i + 1 < n_rows:
+        nexts.append((i + 1, j))
+    if j - 1 >= 0:
+        nexts.append((i, j - 1))
+    if j + 1 < n_cols:
+        nexts.append((i, j + 1))
+
+    nexts = [x for x in nexts if x not in visited and matrix[x[0]][x[1]] == "."]
+    visited.update(nexts)
+
+    for e in nexts:
+        flood_fill(matrix, e, visited)
+
+    print(visited)
+    return len(visited)
+
+
 def scale_up_matrix(matrix: list[list[str]]) -> list[list[str]]:
     scaled_up = []
 
@@ -126,6 +154,7 @@ def main():
 
     print(solve_part_one(contents))
     print(scale_up_matrix([[".", "."], [".", "J"]]))
+    print(flood_fill([[".", "."], [".", "J"]], (0, 0), set()))
 
 
 if __name__ == "__main__":
