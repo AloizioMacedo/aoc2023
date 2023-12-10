@@ -72,10 +72,9 @@ def scale_up(c: str) -> list[list[str]]:
         return [[".", ".", "."], [".", ".", "."], [".", ".", "."]]
 
 
-def parse_contents(contents: str) -> Grid:
+def parse_contents(contents: list[list[str]]) -> Grid:
     graph = nx.Graph()
-
-    lines = contents.splitlines()
+    lines = contents
 
     n_rows = len(lines)
     n_cols = len(lines[0])
@@ -138,8 +137,8 @@ def parse_contents(contents: str) -> Grid:
     return Grid(origin, graph, matrix)
 
 
-def solve_part_one(contents: str) -> int:
-    grid = parse_contents(contents)
+def solve_part_one(contents_as_lst: list[list[str]]) -> int:
+    grid = parse_contents(contents_as_lst)
 
     cycle_with_origin = next(
         cycle for cycle in nx.cycle_basis(grid.graph) if grid.origin in cycle
@@ -152,8 +151,9 @@ def main():
     with open("input.txt") as file:
         contents = file.read()
 
-    print(solve_part_one(contents))
-    print(scale_up_matrix([[".", "."], [".", "J"]]))
+    contents_as_lst = [list(line) for line in contents.splitlines()]
+
+    print(solve_part_one(contents_as_lst))
     print(flood_fill([[".", "."], [".", "J"]], (0, 0), set()))
 
 
