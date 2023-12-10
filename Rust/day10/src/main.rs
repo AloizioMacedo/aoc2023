@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use anyhow::{anyhow, Result};
 use ndarray::Array2;
 use petgraph::graphmap::UnGraphMap;
@@ -78,6 +76,131 @@ impl Pipe {
             _ => vec![],
         }
     }
+
+    fn get_scaled_up_version(&self) -> Array2<Pipe> {
+        match self {
+            Pipe::Vertical => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::Horizontal => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Horizontal,
+                    Pipe::Horizontal,
+                    Pipe::Horizontal,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::NE => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::NE,
+                    Pipe::Horizontal,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::NW => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                    Pipe::Horizontal,
+                    Pipe::NW,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::SW => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Horizontal,
+                    Pipe::SW,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::SE => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::SE,
+                    Pipe::Horizontal,
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::Empty => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+            Pipe::Origin => Array2::from_shape_vec(
+                (3, 3),
+                vec![
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                    Pipe::Horizontal,
+                    Pipe::Origin,
+                    Pipe::Horizontal,
+                    Pipe::Empty,
+                    Pipe::Vertical,
+                    Pipe::Empty,
+                ],
+            )
+            .expect("Should have correct shape"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -112,6 +235,29 @@ impl Grid {
 
         graph
     }
+}
+
+fn scale_up(matrix: &Array2<Pipe>) -> Array2<Pipe> {
+    let n_rows = matrix.nrows();
+    let n_cols = matrix.ncols();
+
+    let mut new_array: Array2<Pipe> = Array2::default((3 * n_rows, 3 * n_cols));
+
+    for ((i, j), p) in matrix.indexed_iter() {
+        let scaled_up = p.get_scaled_up_version();
+
+        for h1 in [3 * i, 3 * i + 1, 3 * i + 2] {
+            for h2 in [3 * j, 3 * j + 1, 3 * j + 2] {
+                new_array[(h1, h2)] = scaled_up[(h1 - 3 * i, h2 - 3 * j)]
+            }
+        }
+    }
+
+    new_array
+}
+
+fn scale_down(matrix: &Array2<Pipe>) -> Array2<Pipe> {
+    todo!()
 }
 
 fn parse_contents(contents: &str) -> Result<Grid> {
@@ -183,6 +329,12 @@ fn find_loop(
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
+
+    let grid = parse_contents(TEST)?;
+
+    let scaled_up = scale_up(&grid.matrix);
+
+    println!("{:?}", scaled_up);
 
     Ok(())
 }
