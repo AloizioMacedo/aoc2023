@@ -9,6 +9,41 @@ class Grid:
     matrix: list[list]
 
 
+def scale_up_matrix(matrix: list[list[str]]) -> list[list[str]]:
+    scaled_up = []
+
+    for k, line in enumerate(matrix):
+        scaled_up.append([])
+        scaled_up.append([])
+        scaled_up.append([])
+
+        scaled_up_chars = [scale_up(c) for c in line]
+        for i in range(3):
+            for scaled_entry in [s[i] for s in scaled_up_chars]:
+                scaled_up[3 * k + i].extend(scaled_entry)
+
+    return scaled_up
+
+
+def scale_up(c: str) -> list[list[str]]:
+    if c == "|":
+        return [[".", "|", "."], [".", "|", "."], [".", "|", "."]]
+    elif c == "-":
+        return [[".", ".", "."], ["-", "-", "-"], [".", ".", "."]]
+    elif c == "L":
+        return [[".", "|", "."], [".", "L", "-"], [".", ".", "."]]
+    elif c == "J":
+        return [[".", "|", "."], ["-", "J", "."], [".", ".", "."]]
+    elif c == "7":
+        return [[".", ".", "."], ["-", "7", "."], [".", "|", "."]]
+    elif c == "F":
+        return [[".", ".", "."], [".", "F", "-"], [".", "|", "."]]
+    elif c == "S":
+        return [[".", "|", "."], ["-", "S", "-"], [".", "|", "."]]
+    else:
+        return [[".", ".", "."], [".", ".", "."], [".", ".", "."]]
+
+
 def parse_contents(contents: str) -> Grid:
     graph = nx.Graph()
 
@@ -90,6 +125,7 @@ def main():
         contents = file.read()
 
     print(solve_part_one(contents))
+    print(scale_up_matrix([[".", "."], [".", "J"]]))
 
 
 if __name__ == "__main__":
