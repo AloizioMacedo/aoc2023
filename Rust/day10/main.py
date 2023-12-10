@@ -10,10 +10,15 @@ class Grid:
 
 
 def flood_fill(
-    matrix: list[list[str]],
-    ref: tuple[int, int],
+    matrix: list[list[str]], ref: tuple[int, int], loop: set[tuple[int, int]]
 ):
     matrix[ref[0]][ref[1]] = "O"
+
+    for tup in loop:
+        for i in [-1, 0, 1]:
+            for j in [-1, 0, 1]:
+                if matrix[3 * tup[0] + 1 + i][3 * tup[1] + 1 + j] != ".":
+                    matrix[3 * tup[0] + 1 + i][3 * tup[1] + 1 + j] = "X"
 
     n_rows = len(matrix)
     n_cols = len(matrix[0])
@@ -29,17 +34,22 @@ def flood_fill(
         matrix[i][j] = "O"
 
         if i - 1 >= 0:
-            if (i - 1, j) not in visited and matrix[i - 1][j] == ".":
+            if (i - 1, j) not in visited and matrix[i - 1][j] != "X":
                 queue.append((i - 1, j))
         if i + 1 < n_rows:
-            if (i + 1, j) not in visited and matrix[i + 1][j] == ".":
+            if (i + 1, j) not in visited and matrix[i + 1][j] != "X":
                 queue.append((i + 1, j))
         if j - 1 >= 0:
-            if (i, j - 1) not in visited and matrix[i][j - 1] == ".":
+            if (i, j - 1) not in visited and matrix[i][j - 1] != "X":
                 queue.append((i, j - 1))
         if j + 1 < n_cols:
-            if (i, j + 1) not in visited and matrix[i][j + 1] == ".":
+            if (i, j + 1) not in visited and matrix[i][j + 1] != "X":
                 queue.append((i, j + 1))
+
+    for i in range(n_rows):
+        for j in range(n_cols):
+            if matrix[i][j] not in ["X", "O"]:
+                matrix[i][j] = "."
 
 
 def scale_down_matrix(matrix: list[list[str]]) -> list[list[str]]:
@@ -165,19 +175,26 @@ def solve_part_one(contents_as_lst: list[list[str]]) -> int:
     return sum(1 for _ in cycle_with_origin) // 2
 
 
-def solve_part_two(contents_as_lst: list[list[str]]) -> int:
+def get_loop(contents_as_lst: list[list[str]]) -> list[tuple[int, int]]:
+    grid = parse_contents(contents_as_lst)
+
+    cycle_with_origin = next(
+        cycle for cycle in nx.cycle_basis(grid.graph) if grid.origin in cycle
+    )
+
+    return cycle_with_origin
+
+
+def solve_part_two(contents_as_lst: list[list[str]], loop: set[tuple[int, int]]) -> int:
     scaled_up = scale_up_matrix(contents_as_lst)
 
     grid = parse_contents(scaled_up)
 
     matrix = grid.matrix.copy()
 
-    flood_fill(matrix, (0, 0))
+    flood_fill(matrix, (0, 0), loop)
 
     scaled_down = scale_down_matrix(matrix)
-
-    for s in scaled_down:
-        print(s)
 
     counter = 0
     for line in scaled_down:
@@ -197,13 +214,15 @@ def remove_frame(matrix: list[list[str]]) -> list[list[str]]:
 
 
 def main():
-    with open("test_input_p2.txt") as file:
+    with open("input.txt") as file:
         contents = file.read()
 
     contents_as_lst = [list(line) for line in contents.splitlines()]
 
     print(solve_part_one(contents_as_lst))
-    print(solve_part_two(contents_as_lst))
+    loop = get_loop(contents_as_lst)
+
+    print(solve_part_two(contents_as_lst, set(loop)))
 
 
 if __name__ == "__main__":
