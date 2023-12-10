@@ -10,8 +10,12 @@ class Grid:
 
 
 def flood_fill(
-    matrix: list[list[str]], ref: tuple[int, int], visited: set[tuple[int, int]]
-) -> int:
+    matrix: list[list[str]],
+    ref: tuple[int, int],
+    visited: set[tuple[int, int]],
+):
+    matrix[ref[0]][ref[1]] = "O"
+
     n_rows = len(matrix)
     n_cols = len(matrix[0])
 
@@ -28,13 +32,24 @@ def flood_fill(
         nexts.append((i, j + 1))
 
     nexts = [x for x in nexts if x not in visited and matrix[x[0]][x[1]] == "."]
+    print(nexts)
     visited.update(nexts)
 
     for e in nexts:
         flood_fill(matrix, e, visited)
 
-    print(visited)
-    return len(visited)
+
+def scale_down_matrix(matrix: list[list[str]]) -> list[list[str]]:
+    scaled_down = []
+    n_rows = len(matrix)
+    n_cols = len(matrix[0])
+
+    for i in range(1, n_rows, 3):
+        scaled_down.append([])
+        for j in range(1, n_cols, 3):
+            scaled_down[-1].append(matrix[i][j])
+
+    return scaled_down
 
 
 def scale_up_matrix(matrix: list[list[str]]) -> list[list[str]]:
@@ -147,6 +162,37 @@ def solve_part_one(contents_as_lst: list[list[str]]) -> int:
     return sum(1 for _ in cycle_with_origin) // 2
 
 
+def solve_part_two(contents_as_lst: list[list[str]]) -> int:
+    scaled_up = scale_up_matrix(contents_as_lst)
+
+    grid = parse_contents(scaled_up)
+
+    matrix = grid.matrix.copy()
+
+    flood_fill(matrix, (0, 0), set())
+
+    scaled_down = scale_down_matrix(matrix)
+
+    for line in scaled_down:
+        print(line)
+
+    counter = 0
+    for line in scaled_down:
+        for c in line:
+            if c == ".":
+                counter += 1
+
+    return counter
+
+
+def remove_frame(matrix: list[list[str]]) -> list[list[str]]:
+    matrix = matrix[1:-1]
+    for i in range(len(matrix)):
+        matrix[i] = matrix[i][1:-1]
+
+    return matrix
+
+
 def main():
     with open("input.txt") as file:
         contents = file.read()
@@ -154,7 +200,7 @@ def main():
     contents_as_lst = [list(line) for line in contents.splitlines()]
 
     print(solve_part_one(contents_as_lst))
-    print(flood_fill([[".", "."], [".", "J"]], (0, 0), set()))
+    print(solve_part_two(contents_as_lst))
 
 
 if __name__ == "__main__":
