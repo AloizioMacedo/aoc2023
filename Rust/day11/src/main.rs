@@ -1,7 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use ndarray::Array2;
 
-const TEST_INPUT: &str = include_str!("../test_input.txt");
 const INPUT: &str = include_str!("../input.txt");
 
 fn parse_contents(contents: &str) -> Result<Array2<char>> {
@@ -38,79 +37,30 @@ fn expand(universe: Array2<char>) -> Array2<char> {
         }
     }
 
-    let new_nrows = universe.nrows() + rows_to_expand.len();
-    let new_ncols = universe.ncols() + cols_to_expand.len();
+    let mut new_array = Array2::from_elem((universe.nrows(), universe.ncols()), 'E');
 
-    let mut new_array = Array2::from_elem((new_nrows, new_ncols), '.');
-
-    let mut i_step_counter = 0;
     for i in 0..universe.nrows() {
-        let mut j_step_counter = 0;
-
         if rows_to_expand.contains(&i) {
-            i_step_counter += 1
+            continue;
         }
 
         for j in 0..universe.ncols() {
             if cols_to_expand.contains(&j) {
-                j_step_counter += 1
+                continue;
             }
 
-            new_array[(i + i_step_counter, j + j_step_counter)] = universe[(i, j)]
+            new_array[(i, j)] = universe[(i, j)]
         }
     }
 
     new_array
 }
 
-fn expand_big(universe: Array2<char>, factor_of_expansion: usize) -> Array2<char> {
-    let mut rows_to_expand: Vec<usize> = Vec::new();
-
-    for i in 0..universe.nrows() {
-        if (0..universe.ncols())
-            .map(|j| universe[(i, j)])
-            .all(|x| x == '.')
-        {
-            rows_to_expand.push(i)
-        }
-    }
-
-    let mut cols_to_expand: Vec<usize> = Vec::new();
-
-    for j in 0..universe.ncols() {
-        if (0..universe.nrows())
-            .map(|i| universe[(i, j)])
-            .all(|x| x == '.')
-        {
-            cols_to_expand.push(j)
-        }
-    }
-
-    let new_nrows = universe.nrows() + (factor_of_expansion - 1) * rows_to_expand.len();
-    let new_ncols = universe.ncols() + (factor_of_expansion - 1) * cols_to_expand.len();
-
-    let mut new_array = Array2::from_elem((new_nrows, new_ncols), '.');
-
-    let mut i_step_counter = 0;
-    for i in 0..universe.nrows() {
-        let mut j_step_counter = 0;
-
-        if rows_to_expand.contains(&i) {
-            i_step_counter += factor_of_expansion - 1
-        }
-
-        for j in 0..universe.ncols() {
-            if cols_to_expand.contains(&j) {
-                j_step_counter += factor_of_expansion - 1
-            }
-
-            new_array[(i + i_step_counter, j + j_step_counter)] = universe[(i, j)]
-        }
-    }
-
-    new_array
+fn solve_part_one(contents: &str) -> Result<usize> {
+    solve_part_two(contents, 2)
 }
-fn solve_part_one(contents: &str) -> Result<i32> {
+
+fn solve_part_two(contents: &str, factor_of_expansion: usize) -> Result<usize> {
     let universe = parse_contents(contents)?;
     let universe = expand(universe);
 
@@ -127,37 +77,36 @@ fn solve_part_one(contents: &str) -> Result<i32> {
             let first_pos = positions[i];
             let second_pos = positions[j];
 
-            let distance = (second_pos.1 as i32 - first_pos.1 as i32).abs()
-                + (second_pos.0 as i32 - first_pos.0 as i32).abs();
+            let (first_hor, second_hor) = if first_pos.0 < second_pos.0 {
+                (first_pos.0, second_pos.0)
+            } else {
+                (second_pos.0, first_pos.0)
+            };
 
-            distances.push(distance);
-        }
-    }
+            let (first_ver, second_ver) = if first_pos.1 < second_pos.1 {
+                (first_pos.1, second_pos.1)
+            } else {
+                (second_pos.1, first_pos.1)
+            };
 
-    Ok(distances.iter().sum())
-}
+            let mut total = 0;
 
-fn solve_part_two(contents: &str, factor_of_expansion: usize) -> Result<i64> {
-    let universe = parse_contents(contents)?;
-    let universe = expand_big(universe, factor_of_expansion);
+            for k in first_ver..second_ver {
+                if universe[(first_hor, k)] == 'E' {
+                    total += factor_of_expansion
+                } else {
+                    total += 1
+                }
+            }
+            for k in first_hor..second_hor {
+                if universe[(k, second_ver)] == 'E' {
+                    total += factor_of_expansion
+                } else {
+                    total += 1
+                }
+            }
 
-    let positions: Vec<(usize, usize)> = universe
-        .indexed_iter()
-        .filter(|((_, _), &v)| v == '#')
-        .map(|(tup, _)| tup)
-        .collect();
-
-    let mut distances = Vec::new();
-
-    for i in 0..positions.len() {
-        for j in (i + 1)..positions.len() {
-            let first_pos = positions[i];
-            let second_pos = positions[j];
-
-            let distance = (second_pos.1 as i64 - first_pos.1 as i64).abs()
-                + (second_pos.0 as i64 - first_pos.0 as i64).abs();
-
-            distances.push(distance);
+            distances.push(total);
         }
     }
 
