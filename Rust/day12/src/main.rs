@@ -88,8 +88,29 @@ fn parse_line(line: &str) -> Result<Row> {
     Ok(Row { springs, groups })
 }
 
+fn parse_line2(line: &str) -> Result<Row> {
+    let (springs, groups) = line.split_once(' ').ok_or(anyhow!("Syntax Error"))?;
+    let springs = [springs, springs, springs, springs, springs].join("?");
+    let groups = [groups, groups, groups, groups, groups].join(",");
+
+    let springs = springs
+        .chars()
+        .map(Spring::try_from)
+        .collect::<Result<Vec<_>>>()?;
+    let groups = groups
+        .split(',')
+        .map(|x| x.parse())
+        .collect::<Result<Vec<_>, ParseIntError>>()?;
+
+    Ok(Row { springs, groups })
+}
+
 fn parse_contents(contents: &str) -> Result<Vec<Row>> {
     contents.lines().map(parse_line).collect()
+}
+
+fn parse_contents_part2(contents: &str) -> Result<Vec<Row>> {
+    contents.lines().map(parse_line2).collect()
 }
 
 fn solve_part_one(contents: &str) -> Result<usize> {
@@ -108,7 +129,21 @@ fn solve_part_one(contents: &str) -> Result<usize> {
     Ok(valid_arrangements)
 }
 
-fn solve_part_two(contents: &str) {}
+fn solve_part_two(contents: &str) -> Result<usize> {
+    let rows = parse_contents_part2(contents)?;
+
+    let valid_arrangements = rows
+        .iter()
+        .map(|r| {
+            generate_possibilities(&r.springs)
+                .iter()
+                .filter(|p| r.is_valid(p))
+                .count()
+        })
+        .sum();
+
+    Ok(valid_arrangements)
+}
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
@@ -122,7 +157,12 @@ mod tests {
     const TEST_INPUT: &str = include_str!("../test_input.txt");
 
     #[test]
-    fn it_works() {
+    fn part_one() {
         assert_eq!(solve_part_one(TEST_INPUT).unwrap(), 21)
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST_INPUT).unwrap(), 525152)
     }
 }
