@@ -4,7 +4,6 @@ use anyhow::{anyhow, Result};
 use itertools::Itertools;
 
 const INPUT: &str = include_str!("../input.txt");
-const TEST_INPUT: &str = include_str!("../test_input.txt");
 
 #[derive(Debug, Clone, Copy)]
 enum Spring {
@@ -24,6 +23,51 @@ impl TryFrom<char> for Spring {
             _ => Err(anyhow!("Invalid spring: {value}")),
         }
     }
+}
+
+fn get_valid_possibilities(row: &Row) -> usize {
+    let groups = &row.groups;
+    let mut springs = vec![Spring::Operational];
+
+    springs.extend(&row.springs);
+
+    let mut possibilities = vec![0; springs.len() + 1];
+    possibilities[0] = 1;
+
+    for (i, _) in springs
+        .iter()
+        .take_while(|c| !matches!(*c, Spring::Damaged))
+        .enumerate()
+    {
+        possibilities[i + 1] = 1;
+    }
+
+    for group_count in groups {
+        let mut new_possibilities = vec![0; springs.len() + 1];
+
+        let mut chunk = 0;
+        for (i, c) in springs.iter().enumerate() {
+            if !matches!(c, Spring::Operational) {
+                chunk += 1;
+            } else {
+                chunk = 0;
+            }
+
+            if !matches!(c, Spring::Damaged) {
+                new_possibilities[i + 1] += new_possibilities[i];
+            }
+
+            if chunk >= *group_count && !matches!(springs[i - group_count], Spring::Damaged) {
+                new_possibilities[i + 1] += possibilities[i - group_count];
+            }
+        }
+
+        possibilities = new_possibilities;
+    }
+
+    *possibilities
+        .last()
+        .expect("Possibilities should have more than one element")
 }
 
 #[derive(Debug)]
@@ -132,6 +176,14 @@ fn solve_part_one(contents: &str) -> Result<usize> {
 fn solve_part_two(contents: &str) -> Result<usize> {
     let rows = parse_contents_part2(contents)?;
 
+    let valid_arrangements = rows.iter().map(get_valid_possibilities).sum();
+
+    Ok(valid_arrangements)
+}
+
+fn solve_part_two_deprecated(contents: &str) -> Result<usize> {
+    let rows = parse_contents_part2(contents)?;
+
     let valid_arrangements = rows
         .iter()
         .map(|r| {
@@ -147,6 +199,7 @@ fn solve_part_two(contents: &str) -> Result<usize> {
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
