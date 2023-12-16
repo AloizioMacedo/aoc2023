@@ -1,7 +1,7 @@
 # Day 7
 
 Not really much to comment here in regards to the algorithm itself, other than the
-main idea being to define an ordering so that the solution becomes just sortind
+main idea being to define an ordering so that the solution becomes just sorting
 the hands at the end.
 
 ## Part One
@@ -150,7 +150,7 @@ mod tests {
 ## Part Two
 
 Part two consists of making some adaptations related to the Joker. I created a lot
-of tests due to debugging cases that were not taken into consideration for the
+of tests for debugging cases that were not taken into consideration for the
 given test cases.
 
 ```rust
