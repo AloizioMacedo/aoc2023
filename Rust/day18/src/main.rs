@@ -195,19 +195,77 @@ struct Grid {
     matrix: Array2<char>,
 }
 
+fn get_vertices(instructions: &[Instruction]) -> (Vec<(i64, i64)>, i64) {
+    let mut current = (0, 0);
+
+    let mut vertices = vec![(0, 0)];
+
+    let mut total_boundary = 0;
+    for Instruction {
+        count, direction, ..
+    } in instructions
+    {
+        match direction {
+            Direction::U => current = (current.0 - *count as i64, current.1),
+            Direction::R => current = (current.0, current.1 + *count as i64),
+            Direction::D => current = (current.0 + *count as i64, current.1),
+            Direction::L => current = (current.0, current.1 - *count as i64),
+        };
+
+        total_boundary += *count;
+        vertices.push(current);
+    }
+
+    (vertices, total_boundary as i64)
+}
+
+fn shoelace(vertices: &[(i64, i64)]) -> i64 {
+    if vertices.is_empty() {
+        return 0;
+    }
+
+    let mut vertices = vertices.to_vec();
+    vertices.push(
+        *vertices
+            .first()
+            .expect("Vertices should not be empty, as it would be early returned"),
+    );
+
+    let mut total = 0;
+    for window in vertices.windows(2) {
+        let (x1, y1) = window[0];
+        let (x2, y2) = window[1];
+
+        total += (x1 * y2) - (y1 * x2);
+    }
+
+    total
+}
+
+fn get_count_of_points_inside(twice_area: i64, boundary: i64) -> i64 {
+    (twice_area - boundary + 2) / 2
+}
+
 fn solve_part_one(contents: &str) -> Result<usize> {
     let instructions = parse_contents(contents)?;
     let grid = build_grid(&instructions);
     let filled = flood_fill(&grid.matrix);
-    println!("{:?}", filled);
 
     Ok(filled.iter().filter(|&&c| c == '#' || c == '.').count())
 }
 
-fn solve_part_two(contents: &str) {}
+fn solve_part_two(contents: &str) -> Result<usize> {
+    let instructions = parse_contents_p2(contents)?;
+    let (vertices, boundary) = get_vertices(&instructions);
+
+    let twice_area = shoelace(&vertices).abs();
+
+    Ok(get_count_of_points_inside(twice_area, boundary) as usize + boundary as usize)
+}
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
@@ -219,5 +277,50 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 62);
+    }
+
+    #[test]
+    fn test_shoelace() {
+        assert_eq!(shoelace(&[(1, 6), (3, 1), (7, 2), (4, 4), (8, 5)]), 33);
+    }
+
+    #[test]
+    fn test_pick() {
+        assert_eq!(get_count_of_points_inside(12, 10), 2);
+    }
+
+    #[test]
+    fn test_boundary() {
+        assert_eq!(
+            get_vertices(&[
+                Instruction {
+                    direction: Direction::R,
+                    count: 3,
+                    color: "",
+                },
+                Instruction {
+                    direction: Direction::D,
+                    count: 2,
+                    color: "",
+                },
+                Instruction {
+                    direction: Direction::L,
+                    count: 3,
+                    color: "",
+                },
+                Instruction {
+                    direction: Direction::U,
+                    count: 2,
+                    color: "",
+                },
+            ],)
+            .1,
+            10
+        );
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), 952408144115);
     }
 }
