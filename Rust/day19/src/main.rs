@@ -229,6 +229,10 @@ impl IntervalLength for (i64, i64) {
 fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_at: &str) -> usize {
     let candidate = workflows.iter().find(|x| x.name == start_at);
 
+    if part_range.iter().any(|p| p.size() == 0) {
+        return 0;
+    }
+
     let mut x_range = part_range[0];
     let mut m_range = part_range[1];
     let mut a_range = part_range[2];
