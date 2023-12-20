@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
+use num::integer::lcm;
 
 const INPUT: &str = include_str!("../input.txt");
 
@@ -217,6 +218,11 @@ fn parse_contents(contents: &str) -> Result<Contraption> {
         modules,
         low_pulses_sent: 0,
         high_pulses_sent: 0,
+
+        fh_reached_at: 0,
+        mf_reached_at: 0,
+        fz_reached_at: 0,
+        ss_reached_at: 0,
     })
 }
 
@@ -225,10 +231,16 @@ struct Contraption<'a> {
     modules: HashMap<&'a str, Rc<RefCell<ModuleType<'a>>>>,
     low_pulses_sent: usize,
     high_pulses_sent: usize,
+
+    // Those are the inputs into 'rx'.
+    fh_reached_at: usize,
+    mf_reached_at: usize,
+    fz_reached_at: usize,
+    ss_reached_at: usize,
 }
 
 impl<'a> Contraption<'a> {
-    fn run(&mut self) -> Result<()> {
+    fn run(&mut self, counter: usize) -> Result<()> {
         self.low_pulses_sent += 1; // Button pulse;
 
         let broadcaster = &self.modules["broadcaster"];
@@ -246,7 +258,22 @@ impl<'a> Contraption<'a> {
         while let Some(pd) = queue.pop_front() {
             match pd.pulse_type {
                 PulseType::Low => self.low_pulses_sent += pd.destinations.len(),
-                PulseType::High => self.high_pulses_sent += pd.destinations.len(),
+                PulseType::High => {
+                    self.high_pulses_sent += pd.destinations.len();
+
+                    if pd.origin == "fh" {
+                        println!("fh at counter {counter}!");
+                    }
+                    if pd.origin == "mf" {
+                        println!("mf at counter {counter}!");
+                    }
+                    if pd.origin == "fz" {
+                        println!("fz at counter {counter}!");
+                    }
+                    if pd.origin == "ss" {
+                        println!("ss at counter {counter}!");
+                    }
+                }
             }
 
             for destination in pd.destinations {
@@ -266,20 +293,97 @@ impl<'a> Contraption<'a> {
 
         Ok(())
     }
+
+    fn run_until_found(&mut self) -> Result<usize> {
+        for counter in 1.. {
+            self.low_pulses_sent += 1; // Button pulse;
+
+            let broadcaster = &self.modules["broadcaster"];
+
+            let mut queue = VecDeque::new();
+
+            let initial_destinations = broadcaster.borrow().get_destinations().to_vec();
+
+            queue.push_back(PulseDelivery {
+                origin: "broadcaster".to_string(),
+                destinations: initial_destinations.iter().map(|x| x.to_string()).collect(),
+                pulse_type: PulseType::Low,
+            });
+
+            while let Some(pd) = queue.pop_front() {
+                match pd.pulse_type {
+                    PulseType::Low => self.low_pulses_sent += pd.destinations.len(),
+                    PulseType::High => {
+                        self.high_pulses_sent += pd.destinations.len();
+
+                        if pd.origin == "fh" && self.fh_reached_at == 0 {
+                            self.fh_reached_at = counter;
+                        }
+                        if pd.origin == "mf" && self.mf_reached_at == 0 {
+                            self.mf_reached_at = counter;
+                        }
+                        if pd.origin == "fz" && self.fz_reached_at == 0 {
+                            self.fz_reached_at = counter;
+                        }
+                        if pd.origin == "ss" && self.ss_reached_at == 0 {
+                            self.ss_reached_at = counter;
+                        }
+                    }
+                }
+
+                let candidate = [
+                    self.fh_reached_at,
+                    self.mf_reached_at,
+                    self.fz_reached_at,
+                    self.ss_reached_at,
+                ]
+                .iter()
+                .fold(1, |acc, &x| lcm(acc, x));
+
+                if candidate > 0 {
+                    return Ok(candidate);
+                }
+
+                for destination in pd.destinations {
+                    let current_dest = self.modules.get(destination.as_str());
+
+                    if let Some(current_dest) = current_dest {
+                        let mut current_dest = current_dest.borrow_mut();
+
+                        let output_pulse =
+                            current_dest.receive_pulse(pd.origin.clone(), pd.pulse_type);
+
+                        if let Some(output_pulse) = output_pulse {
+                            queue.push_back(output_pulse);
+                        }
+                    }
+                }
+            }
+        }
+
+        Err(anyhow!("Not found"))
+    }
 }
 
 fn solve_part_one(contents: &str) -> Result<usize> {
     let mut contraption = parse_contents(contents)?;
 
-    for _ in 0..1000 {
-        contraption.run()?;
+    for i in 0..1000 {
+        contraption.run(i)?;
     }
 
     Ok(contraption.low_pulses_sent * contraption.high_pulses_sent)
 }
 
+fn solve_part_two(contents: &str) -> Result<usize> {
+    let mut contraption = parse_contents(contents)?;
+
+    contraption.run_until_found()
+}
+
 fn main() -> Result<()> {
     println!("{:?}", solve_part_one(INPUT)?);
+    println!("{:?}", solve_part_two(INPUT)?);
 
     Ok(())
 }
