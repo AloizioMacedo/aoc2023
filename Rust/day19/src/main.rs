@@ -3,7 +3,6 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 
-const TEST: &str = include_str!("../test_input.txt");
 const INPUT: &str = include_str!("../input.txt");
 
 #[derive(Debug)]
@@ -270,7 +269,7 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
 
             match comparison {
                 Comparison::Greater => {
-                    if value > left_bound - 1 && value < right_bound {
+                    if value >= left_bound && value < right_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (value + 1, right_bound);
                         (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, value);
                     } else if value < left_bound {
@@ -282,7 +281,7 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                     }
                 }
                 Comparison::Lesser => {
-                    if value > left_bound && value < right_bound + 1 {
+                    if value > left_bound && value <= right_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, value - 1);
                         (relevant_exc_range.0, relevant_exc_range.1) = (value, right_bound);
                     } else if value > right_bound {
@@ -407,6 +406,7 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const TEST: &str = include_str!("../test_input.txt");
 
     #[test]
     fn part_one() {
