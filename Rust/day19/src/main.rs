@@ -275,6 +275,10 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                         (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, value);
                     } else if value < left_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, right_bound);
+                        (relevant_exc_range.0, relevant_exc_range.1) = (0, -1);
+                    } else {
+                        (relevant_inc_range.0, relevant_inc_range.1) = (0, -1);
+                        (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, right_bound);
                     }
                 }
                 Comparison::Lesser => {
@@ -283,6 +287,10 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                         (relevant_exc_range.0, relevant_exc_range.1) = (value, right_bound);
                     } else if value > right_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, right_bound);
+                        (relevant_exc_range.0, relevant_exc_range.1) = (0, -1);
+                    } else {
+                        (relevant_inc_range.0, relevant_inc_range.1) = (0, -1);
+                        (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, right_bound);
                     }
                 }
             };
@@ -291,21 +299,21 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                 Outcome::Destination(next_start) => match category {
                     Category::X => {
                         total += calculate_total(
-                            &[x_range, m_range, a_range, s_range],
+                            &[x_range, m_exc_range, a_exc_range, s_exc_range],
                             workflows,
                             next_start,
                         );
                     }
                     Category::M => {
                         total += calculate_total(
-                            &[x_exc_range, m_range, a_range, s_range],
+                            &[x_exc_range, m_range, a_exc_range, s_exc_range],
                             workflows,
                             next_start,
                         );
                     }
                     Category::A => {
                         total += calculate_total(
-                            &[x_exc_range, m_exc_range, a_range, s_range],
+                            &[x_exc_range, m_exc_range, a_range, s_exc_range],
                             workflows,
                             next_start,
                         );
@@ -318,9 +326,32 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                         );
                     }
                 },
-                Outcome::Accepted => {
-                    total += x_range.size() * m_range.size() * a_range.size() * s_range.size();
-                }
+                Outcome::Accepted => match category {
+                    Category::X => {
+                        total += x_range.size()
+                            * m_exc_range.size()
+                            * a_exc_range.size()
+                            * s_exc_range.size()
+                    }
+                    Category::M => {
+                        total += x_exc_range.size()
+                            * m_range.size()
+                            * a_exc_range.size()
+                            * s_exc_range.size()
+                    }
+                    Category::A => {
+                        total += x_exc_range.size()
+                            * m_exc_range.size()
+                            * a_range.size()
+                            * s_exc_range.size()
+                    }
+                    Category::S => {
+                        total += x_exc_range.size()
+                            * m_exc_range.size()
+                            * a_exc_range.size()
+                            * s_range.size()
+                    }
+                },
                 Outcome::Rejected => (),
             }
         }
@@ -334,7 +365,10 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                 );
             }
             Outcome::Accepted => {
-                total += x_range.size() * m_range.size() * a_range.size() * s_range.size();
+                total += x_exc_range.size()
+                    * m_exc_range.size()
+                    * a_exc_range.size()
+                    * s_exc_range.size();
             }
             Outcome::Rejected => (),
         }
@@ -365,6 +399,7 @@ fn solve_part_two(contents: &str) -> Result<i64> {
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
