@@ -1,8 +1,12 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    rc::Rc,
+};
 
 use anyhow::{anyhow, Result};
 
-const TEST: &str = include_str!("../test_input.txt");
+const INPUT: &str = include_str!("../input.txt");
 
 #[derive(Debug, Clone)]
 enum ModuleType<'a> {
@@ -12,13 +16,13 @@ enum ModuleType<'a> {
 }
 
 impl<'a> ModuleType<'a> {
-    fn receive_pulse(&mut self, origin: &'a str, pulse: PulseType) -> Option<PulseDelivery> {
+    fn receive_pulse(&mut self, origin: String, pulse: PulseType) -> Option<PulseDelivery> {
         match self {
             ModuleType::FlipFlop(ff) => ff.receive_pulse(pulse),
-            ModuleType::Conjunction(c) => Some(c.receive_pulse(origin, pulse)),
+            ModuleType::Conjunction(c) => Some(c.receive_pulse(origin.to_string(), pulse)),
             ModuleType::Broadcaster(destinations) => Some(PulseDelivery {
-                origin: "broadcaster",
-                destinations,
+                origin: "broadcaster".to_string(),
+                destinations: destinations.iter().map(|x| x.to_string()).collect(),
                 pulse_type: PulseType::Low,
             }),
         }
@@ -63,16 +67,16 @@ impl<'a> FlipFlop<'a> {
                 FlipFlopStatus::Off => {
                     self.status = FlipFlopStatus::On;
                     Some(PulseDelivery {
-                        origin: self.name,
-                        destinations: &self.destinations,
+                        origin: self.name.to_string(),
+                        destinations: self.destinations.iter().map(|x| x.to_string()).collect(),
                         pulse_type: PulseType::High,
                     })
                 }
                 FlipFlopStatus::On => {
                     self.status = FlipFlopStatus::Off;
                     Some(PulseDelivery {
-                        origin: self.name,
-                        destinations: &self.destinations,
+                        origin: self.name.to_string(),
+                        destinations: self.destinations.iter().map(|x| x.to_string()).collect(),
                         pulse_type: PulseType::Low,
                     })
                 }
@@ -89,10 +93,10 @@ enum FlipFlopStatus {
     Off,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct PulseDelivery<'a> {
-    origin: &'a str,
-    destinations: &'a [&'a str],
+#[derive(Debug, Clone)]
+struct PulseDelivery {
+    origin: String,
+    destinations: Vec<String>,
     pulse_type: PulseType,
 }
 
@@ -105,7 +109,7 @@ enum PulseType {
 #[derive(Debug, Clone)]
 struct Conjunction<'a> {
     name: &'a str,
-    most_recent_pulses: HashMap<&'a str, PulseType>,
+    most_recent_pulses: HashMap<String, PulseType>,
     destinations: Vec<&'a str>,
 }
 
@@ -119,10 +123,11 @@ impl<'a> Conjunction<'a> {
     }
 
     fn initialize_input(&mut self, name: &'a str) {
-        self.most_recent_pulses.insert(name, PulseType::Low);
+        self.most_recent_pulses
+            .insert(name.to_string(), PulseType::Low);
     }
 
-    fn receive_pulse(&mut self, origin: &'a str, pulse: PulseType) -> PulseDelivery {
+    fn receive_pulse(&mut self, origin: String, pulse: PulseType) -> PulseDelivery {
         self.most_recent_pulses.insert(origin, pulse);
 
         if self
@@ -131,15 +136,15 @@ impl<'a> Conjunction<'a> {
             .all(|pt| matches!(pt, PulseType::High))
         {
             PulseDelivery {
-                origin: self.name,
+                origin: self.name.to_string(),
                 pulse_type: PulseType::Low,
-                destinations: &self.destinations,
+                destinations: self.destinations.iter().map(|x| x.to_string()).collect(),
             }
         } else {
             PulseDelivery {
-                origin: self.name,
+                origin: self.name.to_string(),
                 pulse_type: PulseType::High,
-                destinations: &self.destinations,
+                destinations: self.destinations.iter().map(|x| x.to_string()).collect(),
             }
         }
     }
@@ -205,42 +210,56 @@ fn parse_contents(contents: &str) -> Result<Contraption> {
     let mut modules = HashMap::new();
 
     for module in module_types {
-        modules.insert(module.get_name(), module);
+        modules.insert(module.get_name(), Rc::new(RefCell::new(module)));
     }
 
-    Ok(Contraption { modules })
+    Ok(Contraption {
+        modules,
+        low_pulses_sent: 0,
+        high_pulses_sent: 0,
+    })
 }
 
 #[derive(Debug)]
 struct Contraption<'a> {
-    modules: HashMap<&'a str, ModuleType<'a>>,
+    modules: HashMap<&'a str, Rc<RefCell<ModuleType<'a>>>>,
+    low_pulses_sent: usize,
+    high_pulses_sent: usize,
 }
 
 impl<'a> Contraption<'a> {
-    fn run(&'a mut self) -> Result<()> {
+    fn run(&mut self) -> Result<()> {
+        self.low_pulses_sent += 1; // Button pulse;
+
         let broadcaster = &self.modules["broadcaster"];
 
         let mut queue = VecDeque::new();
 
-        let initial_destinations = broadcaster.get_destinations();
+        let initial_destinations = broadcaster.borrow().get_destinations().to_vec();
 
         queue.push_back(PulseDelivery {
-            origin: "broadcaster",
-            destinations: initial_destinations,
+            origin: "broadcaster".to_string(),
+            destinations: initial_destinations.iter().map(|x| x.to_string()).collect(),
             pulse_type: PulseType::Low,
         });
 
         while let Some(pd) = queue.pop_front() {
+            match pd.pulse_type {
+                PulseType::Low => self.low_pulses_sent += pd.destinations.len(),
+                PulseType::High => self.high_pulses_sent += pd.destinations.len(),
+            }
+
             for destination in pd.destinations {
-                let destination = self
-                    .modules
-                    .get_mut(destination)
-                    .expect("Should have destination {destination}");
+                let current_dest = self.modules.get(destination.as_str());
 
-                let output_pulse = destination.receive_pulse(pd.origin, pd.pulse_type);
+                if let Some(current_dest) = current_dest {
+                    let mut current_dest = current_dest.borrow_mut();
 
-                if let Some(output_pulse) = output_pulse {
-                    queue.push_back(output_pulse);
+                    let output_pulse = current_dest.receive_pulse(pd.origin.clone(), pd.pulse_type);
+
+                    if let Some(output_pulse) = output_pulse {
+                        queue.push_back(output_pulse);
+                    }
                 }
             }
         }
@@ -249,8 +268,18 @@ impl<'a> Contraption<'a> {
     }
 }
 
+fn solve_part_one(contents: &str) -> Result<usize> {
+    let mut contraption = parse_contents(contents)?;
+
+    for _ in 0..1000 {
+        contraption.run()?;
+    }
+
+    Ok(contraption.low_pulses_sent * contraption.high_pulses_sent)
+}
+
 fn main() -> Result<()> {
-    println!("{:?}", parse_contents(TEST));
+    println!("{:?}", solve_part_one(INPUT)?);
 
     Ok(())
 }
@@ -258,7 +287,10 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const TEST: &str = include_str!("../test_input.txt");
 
     #[test]
-    fn it_works() {}
+    fn part_one() {
+        assert_eq!(solve_part_one(TEST).unwrap(), 32_000_000);
+    }
 }
