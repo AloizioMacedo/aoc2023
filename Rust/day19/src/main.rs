@@ -390,14 +390,14 @@ fn solve_part_one(contents: &str) -> Result<i64> {
         .sum())
 }
 
-fn solve_part_two(contents: &str) -> Result<i64> {
+fn solve_part_two(contents: &str) -> Result<usize> {
     let (workflows, _) = parse_contents(contents)?;
 
     Ok(calculate_total(
         &[(1, 4000), (1, 4000), (1, 4000), (1, 4000)],
         &workflows,
         "in",
-    ) as i64)
+    ))
 }
 
 fn main() -> Result<()> {
