@@ -1,7 +1,11 @@
+mod interval_arithmetic;
+
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
+
+use interval_arithmetic::interval_diff;
 
 const INPUT: &str = include_str!("../input.txt");
 
@@ -226,6 +230,28 @@ impl IntervalLength for (i64, i64) {
     }
 }
 
+fn get_diff(intervals: &[(i64, i64)], b: (i64, i64)) -> Vec<(i64, i64)> {
+    if b == (0, -1) {
+        return intervals.to_vec();
+    }
+
+    let mut result = Vec::new();
+    for interval in intervals {
+        if b.0 <= interval.0 && b.1 >= interval.1 {
+            result.push((0, -1));
+        } else if b.0 > interval.0 && b.1 >= interval.1 {
+            result.push((interval.0, b.0 - 1));
+        } else if b.0 > interval.0 && b.1 < interval.1 {
+            result.push((interval.0, b.0 - 1));
+            result.push((b.1 + 1, interval.1));
+        } else if b.0 <= interval.0 && b.1 < interval.1 {
+            result.push((b.1 + 1, interval.1));
+        }
+    }
+
+    result
+}
+
 fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_at: &str) -> usize {
     let candidate = workflows.iter().find(|x| x.name == start_at);
 
@@ -238,10 +264,10 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
     let mut a_range = part_range[2];
     let mut s_range = part_range[3];
 
-    let mut x_exc_range = part_range[0];
-    let mut m_exc_range = part_range[1];
-    let mut a_exc_range = part_range[2];
-    let mut s_exc_range = part_range[3];
+    let mut x_exc_ranges = vec![part_range[0]];
+    let mut m_exc_ranges = vec![part_range[1]];
+    let mut a_exc_ranges = vec![part_range[2]];
+    let mut s_exc_ranges = vec![part_range[3]];
 
     let mut total = 0;
 
@@ -253,7 +279,20 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
             outcome,
         } in &next.conditionals
         {
+            if start_at == "m" {
+                println!("{:?}", m_range);
+            }
+
             let value = *value;
+
+            let original_range = part_range[usize::from(*category)];
+
+            let (left_bound, right_bound) = match category {
+                Category::X => (x_range.0, x_range.1),
+                Category::M => (m_range.0, m_range.1),
+                Category::A => (a_range.0, a_range.1),
+                Category::S => (s_range.0, s_range.1),
+            };
 
             let relevant_inc_range = match category {
                 Category::X => &mut x_range,
@@ -262,97 +301,125 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                 Category::S => &mut s_range,
             };
 
-            let relevant_exc_range = match category {
-                Category::X => &mut x_exc_range,
-                Category::M => &mut m_exc_range,
-                Category::A => &mut a_exc_range,
-                Category::S => &mut s_exc_range,
+            let relevant_exc_ranges = match category {
+                Category::X => &mut x_exc_ranges,
+                Category::M => &mut m_exc_ranges,
+                Category::A => &mut a_exc_ranges,
+                Category::S => &mut s_exc_ranges,
             };
-
-            let (left_bound, right_bound) = part_range[usize::from(*category)];
 
             match comparison {
                 Comparison::Greater => {
                     if value >= left_bound && value < right_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (value + 1, right_bound);
-                        (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, value);
                     } else if value < left_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, right_bound);
-                        (relevant_exc_range.0, relevant_exc_range.1) = (0, -1);
                     } else {
                         (relevant_inc_range.0, relevant_inc_range.1) = (0, -1);
-                        (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, right_bound);
                     }
                 }
                 Comparison::Lesser => {
                     if value > left_bound && value <= right_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, value - 1);
-                        (relevant_exc_range.0, relevant_exc_range.1) = (value, right_bound);
                     } else if value > right_bound {
                         (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, right_bound);
-                        (relevant_exc_range.0, relevant_exc_range.1) = (0, -1);
                     } else {
                         (relevant_inc_range.0, relevant_inc_range.1) = (0, -1);
-                        (relevant_exc_range.0, relevant_exc_range.1) = (left_bound, right_bound);
                     }
                 }
             };
 
+            let diffs = get_diff(&[original_range], *relevant_inc_range);
+            relevant_exc_ranges.clear();
+            relevant_exc_ranges.extend(diffs);
+
             match outcome {
                 Outcome::Destination(next_start) => match category {
                     Category::X => {
-                        total += calculate_total(
-                            &[x_range, m_exc_range, a_exc_range, s_exc_range],
-                            workflows,
-                            next_start,
-                        );
+                        for (&m_exc_range, &a_exc_range, &s_exc_range) in
+                            itertools::iproduct!(&m_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                        {
+                            total += calculate_total(
+                                &[x_range, m_exc_range, a_exc_range, s_exc_range],
+                                workflows,
+                                next_start,
+                            );
+                        }
                     }
                     Category::M => {
-                        total += calculate_total(
-                            &[x_exc_range, m_range, a_exc_range, s_exc_range],
-                            workflows,
-                            next_start,
-                        );
+                        for (&x_exc_range, &a_exc_range, &s_exc_range) in
+                            itertools::iproduct!(&x_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                        {
+                            total += calculate_total(
+                                &[x_exc_range, m_range, a_exc_range, s_exc_range],
+                                workflows,
+                                next_start,
+                            );
+                        }
                     }
                     Category::A => {
-                        total += calculate_total(
-                            &[x_exc_range, m_exc_range, a_range, s_exc_range],
-                            workflows,
-                            next_start,
-                        );
+                        for (&x_exc_range, &m_exc_range, &s_exc_range) in
+                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &s_exc_ranges)
+                        {
+                            total += calculate_total(
+                                &[x_exc_range, m_exc_range, a_range, s_exc_range],
+                                workflows,
+                                next_start,
+                            );
+                        }
                     }
                     Category::S => {
-                        total += calculate_total(
-                            &[x_exc_range, m_exc_range, a_exc_range, s_range],
-                            workflows,
-                            next_start,
-                        );
+                        for (&x_exc_range, &m_exc_range, &a_exc_range) in
+                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &a_exc_ranges)
+                        {
+                            total += calculate_total(
+                                &[x_exc_range, m_exc_range, a_exc_range, s_range],
+                                workflows,
+                                next_start,
+                            );
+                        }
                     }
                 },
                 Outcome::Accepted => match category {
                     Category::X => {
-                        total += x_range.size()
-                            * m_exc_range.size()
-                            * a_exc_range.size()
-                            * s_exc_range.size()
+                        for (&m_exc_range, &a_exc_range, &s_exc_range) in
+                            itertools::iproduct!(&m_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                        {
+                            total += x_range.size()
+                                * m_exc_range.size()
+                                * a_exc_range.size()
+                                * s_exc_range.size();
+                        }
                     }
                     Category::M => {
-                        total += x_exc_range.size()
-                            * m_range.size()
-                            * a_exc_range.size()
-                            * s_exc_range.size()
+                        for (&x_exc_range, &a_exc_range, &s_exc_range) in
+                            itertools::iproduct!(&x_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                        {
+                            total += x_exc_range.size()
+                                * m_range.size()
+                                * a_exc_range.size()
+                                * s_exc_range.size();
+                        }
                     }
                     Category::A => {
-                        total += x_exc_range.size()
-                            * m_exc_range.size()
-                            * a_range.size()
-                            * s_exc_range.size()
+                        for (&x_exc_range, &m_exc_range, &s_exc_range) in
+                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &s_exc_ranges)
+                        {
+                            total += x_exc_range.size()
+                                * m_exc_range.size()
+                                * a_range.size()
+                                * s_exc_range.size();
+                        }
                     }
                     Category::S => {
-                        total += x_exc_range.size()
-                            * m_exc_range.size()
-                            * a_exc_range.size()
-                            * s_range.size()
+                        for (&x_exc_range, &m_exc_range, &a_exc_range) in
+                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &a_exc_ranges)
+                        {
+                            total += x_exc_range.size()
+                                * m_exc_range.size()
+                                * a_exc_range.size()
+                                * s_range.size();
+                        }
                     }
                 },
                 Outcome::Rejected => (),
@@ -361,17 +428,25 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
 
         match next.finally {
             Outcome::Destination(next_start) => {
-                total += calculate_total(
-                    &[x_exc_range, m_exc_range, a_exc_range, s_exc_range],
-                    workflows,
-                    next_start,
-                );
+                for (x_exc_range, m_exc_range, a_exc_range, s_exc_range) in
+                    itertools::iproduct!(x_exc_ranges, m_exc_ranges, a_exc_ranges, s_exc_ranges)
+                {
+                    total += calculate_total(
+                        &[x_exc_range, m_exc_range, a_exc_range, s_exc_range],
+                        workflows,
+                        next_start,
+                    );
+                }
             }
             Outcome::Accepted => {
-                total += x_exc_range.size()
-                    * m_exc_range.size()
-                    * a_exc_range.size()
-                    * s_exc_range.size();
+                for (x_exc_range, m_exc_range, a_exc_range, s_exc_range) in
+                    itertools::iproduct!(x_exc_ranges, m_exc_ranges, a_exc_ranges, s_exc_ranges)
+                {
+                    total += x_exc_range.size()
+                        * m_exc_range.size()
+                        * a_exc_range.size()
+                        * s_exc_range.size();
+                }
             }
             Outcome::Rejected => (),
         }
