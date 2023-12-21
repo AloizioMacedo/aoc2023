@@ -325,7 +325,7 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                 relevant_inc_range, category
             );
 
-            let diffs = interval_diff(&original_range, relevant_inc_range);
+            let diffs = interval_diff(relevant_exc_ranges, relevant_inc_range);
             relevant_exc_ranges.clear();
             relevant_exc_ranges.extend(diffs);
 
@@ -507,6 +507,33 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 19114);
+    }
+
+    #[test]
+    fn part_two_hey() {
+        let workflows = vec![Workflow {
+            name: "one",
+            conditionals: vec![
+                Conditional {
+                    comparison: Comparison::Lesser,
+                    category: Category::M,
+                    value: 30,
+                    outcome: Outcome::Accepted,
+                },
+                Conditional {
+                    comparison: Comparison::Greater,
+                    category: Category::M,
+                    value: 43,
+                    outcome: Outcome::Accepted,
+                },
+            ],
+            finally: Outcome::Accepted,
+        }];
+
+        assert_eq!(
+            calculate_total(&[(1, 50), (1, 50), (1, 50), (1, 50)], &workflows, "one"),
+            50 * 50 * 50 * 50
+        )
     }
 
     #[test]
