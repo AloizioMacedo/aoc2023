@@ -1,9 +1,11 @@
+mod interpolation;
+
 use std::collections::{HashSet, VecDeque};
 
 use anyhow::{anyhow, Result};
+use interpolation::interpolate_quadratically;
 use ndarray::Array2;
 
-const TEST: &str = include_str!("../test_input.txt");
 const INPUT: &str = include_str!("../input.txt");
 
 #[derive(Debug, Clone)]
@@ -75,58 +77,72 @@ fn bfs_matrix(matrix: &Matrix, steps: usize) -> Result<usize> {
 
     matrix.set((beginning.0 as i32, beginning.1 as i32), 'O');
 
-    let mut current_queue = VecDeque::new();
-    let mut next_queue = VecDeque::new();
+    let mut current_queue = HashSet::new();
+    let mut next_queue = HashSet::new();
 
-    current_queue.push_front((beginning.0 as i32, beginning.1 as i32));
+    current_queue.insert((beginning.0 as i32, beginning.1 as i32));
+
+    let mut to_interpolate = Vec::new();
 
     let mut counter = 0;
-    while let Some((i, j)) = current_queue.pop_back() {
+
+    while !current_queue.is_empty() {
         if counter >= steps {
             break;
         }
+        for (i, j) in current_queue.iter() {
+            let i = *i;
+            let j = *j;
 
-        //eprintln!(
-        //"Current: {:?}, Steps before proceeding: {:?}",
-        //(i, j),
-        //matrix.steps
-        //);
+            // eprintln!(
+            //   "Current: {:?}, Steps before proceeding: {:?}",
+            //   (i, j),
+            //   matrix.steps
+            //);
 
-        matrix.set((i, j), '.');
-        // eprintln!(
-        //"North: {:?}, South: {:?}, West: {:?}, East: {:?}",
-        //matrix.get((i - 1, j)),
-        //matrix.get((i + 1, j)),
-        //matrix.get((i, j - 1)),
-        //matrix.get((i, j + 1)),
-        //);
+            matrix.set((i, j), '.');
+            // eprintln!(
+            //   "North: {:?}, South: {:?}, West: {:?}, East: {:?}",
+            //   matrix.get((i - 1, j)),
+            //   matrix.get((i + 1, j)),
+            //   matrix.get((i, j - 1)),
+            //   matrix.get((i, j + 1)),
+            //);
 
-        if matches!(matrix.get((i - 1, j)), '.' | 'O') {
-            matrix.set((i - 1, j), 'O');
-            next_queue.push_front((i - 1, j));
+            if matches!(matrix.get((i - 1, j)), '.' | 'O') {
+                matrix.set((i - 1, j), 'O');
+                next_queue.insert((i - 1, j));
+            }
+            if matches!(matrix.get((i + 1, j)), '.' | 'O') {
+                matrix.set((i + 1, j), 'O');
+                next_queue.insert((i + 1, j));
+            }
+            if matches!(matrix.get((i, j - 1)), '.' | 'O') {
+                matrix.set((i, j - 1), 'O');
+                next_queue.insert((i, j - 1));
+            }
+            if matches!(matrix.get((i, j + 1)), '.' | 'O') {
+                matrix.set((i, j + 1), 'O');
+                next_queue.insert((i, j + 1));
+            }
+
+            // eprintln!("Steps after proceeding: {:?}", matrix.steps);
         }
-        if matches!(matrix.get((i + 1, j)), '.' | 'O') {
-            matrix.set((i + 1, j), 'O');
-            next_queue.push_front((i + 1, j));
-        }
-        if matches!(matrix.get((i, j - 1)), '.' | 'O') {
-            matrix.set((i, j - 1), 'O');
-            next_queue.push_front((i, j - 1));
-        }
-        if matches!(matrix.get((i, j + 1)), '.' | 'O') {
-            matrix.set((i, j + 1), 'O');
-            next_queue.push_front((i, j + 1));
-        }
 
-        // eprintln!("Steps after proceeding: {:?}", matrix.steps);
-
-        if current_queue.is_empty() {
+        if !next_queue.is_empty() {
+            current_queue.clear();
             current_queue.extend(&next_queue);
             next_queue.clear();
 
             counter += 1;
-            println!("{:?}", current_queue.len());
-            println!("{counter}: {}", matrix.steps.len())
+
+            if counter % matrix.base.nrows() == 26_501_365 % matrix.base.nrows() {
+                to_interpolate.push((counter as f64, matrix.steps.len() as f64));
+            }
+
+            if to_interpolate.len() >= 3 {
+                return Ok(interpolate_quadratically(&to_interpolate, 26_501_365.0) as usize);
+            }
         }
     }
 
@@ -194,16 +210,13 @@ fn solve_part_one(contents: &str, n: usize) -> Result<usize> {
 
 fn solve_part_two(contents: &str, n: usize) -> Result<usize> {
     let matrix = parse_contents_p2(contents)?;
-    let nrows = matrix.base.nrows();
 
     bfs_matrix(&matrix, n)
 }
 
 fn main() -> Result<()> {
     println!("{}", solve_part_one(INPUT, 64)?);
-    // println!("{}", solve_part_two(TEST, 5)?);
-    println!("{}", solve_part_two(TEST, 26_501_365)?);
-    // println!("{}", solve_part_one(INPUT, 26_501_365)?);
+    println!("{}", solve_part_two(INPUT, 26_501_365)?);
 
     Ok(())
 }
@@ -211,6 +224,7 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const TEST: &str = include_str!("../test_input.txt");
 
     #[test]
     fn part_one() {
