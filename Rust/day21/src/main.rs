@@ -101,19 +101,19 @@ fn bfs_matrix(matrix: &Matrix, steps: usize) -> Result<usize> {
         //matrix.get((i, j + 1)),
         //);
 
-        if matrix.get((i - 1, j)) == '.' || matrix.get((i - 1, j)) == 'O' {
+        if matches!(matrix.get((i - 1, j)), '.' | 'O') {
             matrix.set((i - 1, j), 'O');
             next_queue.push_front((i - 1, j));
         }
-        if matrix.get((i + 1, j)) == '.' || matrix.get((i + 1, j)) == 'O' {
+        if matches!(matrix.get((i + 1, j)), '.' | 'O') {
             matrix.set((i + 1, j), 'O');
             next_queue.push_front((i + 1, j));
         }
-        if matrix.get((i, j - 1)) == '.' || matrix.get((i, j - 1)) == 'O' {
+        if matches!(matrix.get((i, j - 1)), '.' | 'O') {
             matrix.set((i, j - 1), 'O');
             next_queue.push_front((i, j - 1));
         }
-        if matrix.get((i, j + 1)) == '.' || matrix.get((i, j + 1)) == 'O' {
+        if matches!(matrix.get((i, j + 1)), '.' | 'O') {
             matrix.set((i, j + 1), 'O');
             next_queue.push_front((i, j + 1));
         }
@@ -125,6 +125,8 @@ fn bfs_matrix(matrix: &Matrix, steps: usize) -> Result<usize> {
             next_queue.clear();
 
             counter += 1;
+            println!("{:?}", current_queue.len());
+            println!("{counter}: {}", matrix.steps.len())
         }
     }
 
@@ -193,12 +195,6 @@ fn solve_part_one(contents: &str, n: usize) -> Result<usize> {
 fn solve_part_two(contents: &str, n: usize) -> Result<usize> {
     let matrix = parse_contents_p2(contents)?;
     let nrows = matrix.base.nrows();
-
-    for i in 1..n {
-        // if i % nrows == 26_501_365 % nrows {
-        println!("{i}: {}", bfs_matrix(&matrix, i)?);
-        //}
-    }
 
     bfs_matrix(&matrix, n)
 }
