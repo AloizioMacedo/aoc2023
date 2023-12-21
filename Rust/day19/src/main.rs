@@ -5,7 +5,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 
-use interval_arithmetic::interval_diff;
+use interval_arithmetic::{intersection, interval_diff};
 
 const INPUT: &str = include_str!("../input.txt");
 
@@ -259,10 +259,10 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
         return 0;
     }
 
-    let mut x_range = part_range[0];
-    let mut m_range = part_range[1];
-    let mut a_range = part_range[2];
-    let mut s_range = part_range[3];
+    let mut x_ranges = vec![part_range[0]];
+    let mut m_ranges = vec![part_range[1]];
+    let mut a_ranges = vec![part_range[2]];
+    let mut s_ranges = vec![part_range[3]];
 
     let mut x_exc_ranges = vec![part_range[0]];
     let mut m_exc_ranges = vec![part_range[1]];
@@ -280,26 +280,19 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
         } in &next.conditionals
         {
             if start_at == "m" {
-                println!("{:?}", m_range);
+                println!("{:?}", m_ranges);
             }
 
             let value = *value;
 
-            let original_range = part_range[usize::from(*category)];
-
-            let (left_bound, right_bound) = match category {
-                Category::X => (x_range.0, x_range.1),
-                Category::M => (m_range.0, m_range.1),
-                Category::A => (a_range.0, a_range.1),
-                Category::S => (s_range.0, s_range.1),
-            };
-
             let relevant_inc_range = match category {
-                Category::X => &mut x_range,
-                Category::M => &mut m_range,
-                Category::A => &mut a_range,
-                Category::S => &mut s_range,
+                Category::X => &mut x_ranges,
+                Category::M => &mut m_ranges,
+                Category::A => &mut a_ranges,
+                Category::S => &mut s_ranges,
             };
+
+            let original_range = relevant_inc_range.clone();
 
             let relevant_exc_ranges = match category {
                 Category::X => &mut x_exc_ranges,
@@ -310,115 +303,139 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
 
             match comparison {
                 Comparison::Greater => {
-                    if value >= left_bound && value < right_bound {
-                        (relevant_inc_range.0, relevant_inc_range.1) = (value + 1, right_bound);
-                    } else if value < left_bound {
-                        (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, right_bound);
-                    } else {
-                        (relevant_inc_range.0, relevant_inc_range.1) = (0, -1);
+                    let mut new_inc_range = Vec::new();
+                    for range in relevant_inc_range.iter() {
+                        new_inc_range.push(intersection((value + 1, 4000), *range))
                     }
+                    relevant_inc_range.clear();
+                    relevant_inc_range.extend(new_inc_range);
                 }
                 Comparison::Lesser => {
-                    if value > left_bound && value <= right_bound {
-                        (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, value - 1);
-                    } else if value > right_bound {
-                        (relevant_inc_range.0, relevant_inc_range.1) = (left_bound, right_bound);
-                    } else {
-                        (relevant_inc_range.0, relevant_inc_range.1) = (0, -1);
+                    let mut new_inc_range = Vec::new();
+                    for range in relevant_inc_range.iter() {
+                        new_inc_range.push(intersection((0, value - 1), *range))
                     }
+                    relevant_inc_range.clear();
+                    relevant_inc_range.extend(new_inc_range);
                 }
             };
 
-            let diffs = get_diff(&[original_range], *relevant_inc_range);
+            println!(
+                "Relevant inc range: {:?}, Category: {:?}",
+                relevant_inc_range, category
+            );
+
+            let diffs = interval_diff(&original_range, relevant_inc_range);
             relevant_exc_ranges.clear();
             relevant_exc_ranges.extend(diffs);
+
+            println!(
+                "Relevant exc range: {:?}, Category: {:?}",
+                relevant_exc_ranges, category
+            );
 
             match outcome {
                 Outcome::Destination(next_start) => match category {
                     Category::X => {
-                        for (&m_exc_range, &a_exc_range, &s_exc_range) in
-                            itertools::iproduct!(&m_exc_ranges, &a_exc_ranges, &s_exc_ranges)
-                        {
-                            total += calculate_total(
-                                &[x_range, m_exc_range, a_exc_range, s_exc_range],
-                                workflows,
-                                next_start,
-                            );
+                        for &x_range in &x_ranges {
+                            for (&m_exc_range, &a_exc_range, &s_exc_range) in
+                                itertools::iproduct!(&m_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                            {
+                                total += calculate_total(
+                                    &[x_range, m_exc_range, a_exc_range, s_exc_range],
+                                    workflows,
+                                    next_start,
+                                );
+                            }
                         }
                     }
                     Category::M => {
-                        for (&x_exc_range, &a_exc_range, &s_exc_range) in
-                            itertools::iproduct!(&x_exc_ranges, &a_exc_ranges, &s_exc_ranges)
-                        {
-                            total += calculate_total(
-                                &[x_exc_range, m_range, a_exc_range, s_exc_range],
-                                workflows,
-                                next_start,
-                            );
+                        for &m_range in &m_ranges {
+                            for (&x_exc_range, &a_exc_range, &s_exc_range) in
+                                itertools::iproduct!(&x_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                            {
+                                total += calculate_total(
+                                    &[x_exc_range, m_range, a_exc_range, s_exc_range],
+                                    workflows,
+                                    next_start,
+                                );
+                            }
                         }
                     }
                     Category::A => {
-                        for (&x_exc_range, &m_exc_range, &s_exc_range) in
-                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &s_exc_ranges)
-                        {
-                            total += calculate_total(
-                                &[x_exc_range, m_exc_range, a_range, s_exc_range],
-                                workflows,
-                                next_start,
-                            );
+                        for &a_range in &a_ranges {
+                            for (&x_exc_range, &m_exc_range, &s_exc_range) in
+                                itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &s_exc_ranges)
+                            {
+                                total += calculate_total(
+                                    &[x_exc_range, m_exc_range, a_range, s_exc_range],
+                                    workflows,
+                                    next_start,
+                                );
+                            }
                         }
                     }
                     Category::S => {
-                        for (&x_exc_range, &m_exc_range, &a_exc_range) in
-                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &a_exc_ranges)
-                        {
-                            total += calculate_total(
-                                &[x_exc_range, m_exc_range, a_exc_range, s_range],
-                                workflows,
-                                next_start,
-                            );
+                        for &s_range in &s_ranges {
+                            for (&x_exc_range, &m_exc_range, &a_exc_range) in
+                                itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &a_exc_ranges)
+                            {
+                                total += calculate_total(
+                                    &[x_exc_range, m_exc_range, a_exc_range, s_range],
+                                    workflows,
+                                    next_start,
+                                );
+                            }
                         }
                     }
                 },
                 Outcome::Accepted => match category {
                     Category::X => {
-                        for (&m_exc_range, &a_exc_range, &s_exc_range) in
-                            itertools::iproduct!(&m_exc_ranges, &a_exc_ranges, &s_exc_ranges)
-                        {
-                            total += x_range.size()
-                                * m_exc_range.size()
-                                * a_exc_range.size()
-                                * s_exc_range.size();
+                        for x_range in &x_ranges {
+                            for (&m_exc_range, &a_exc_range, &s_exc_range) in
+                                itertools::iproduct!(&m_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                            {
+                                total += x_range.size()
+                                    * m_exc_range.size()
+                                    * a_exc_range.size()
+                                    * s_exc_range.size();
+                            }
                         }
                     }
                     Category::M => {
-                        for (&x_exc_range, &a_exc_range, &s_exc_range) in
-                            itertools::iproduct!(&x_exc_ranges, &a_exc_ranges, &s_exc_ranges)
-                        {
-                            total += x_exc_range.size()
-                                * m_range.size()
-                                * a_exc_range.size()
-                                * s_exc_range.size();
+                        for m_range in &m_ranges {
+                            for (&x_exc_range, &a_exc_range, &s_exc_range) in
+                                itertools::iproduct!(&x_exc_ranges, &a_exc_ranges, &s_exc_ranges)
+                            {
+                                total += x_exc_range.size()
+                                    * m_range.size()
+                                    * a_exc_range.size()
+                                    * s_exc_range.size();
+                            }
                         }
                     }
                     Category::A => {
-                        for (&x_exc_range, &m_exc_range, &s_exc_range) in
-                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &s_exc_ranges)
-                        {
-                            total += x_exc_range.size()
-                                * m_exc_range.size()
-                                * a_range.size()
-                                * s_exc_range.size();
+                        for a_range in &a_ranges {
+                            for (&x_exc_range, &m_exc_range, &s_exc_range) in
+                                itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &s_exc_ranges)
+                            {
+                                total += x_exc_range.size()
+                                    * m_exc_range.size()
+                                    * a_range.size()
+                                    * s_exc_range.size();
+                            }
                         }
                     }
                     Category::S => {
-                        for (&x_exc_range, &m_exc_range, &a_exc_range) in
-                            itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &a_exc_ranges)
-                        {
-                            total += x_exc_range.size()
-                                * m_exc_range.size()
-                                * a_exc_range.size()
-                                * s_range.size();
+                        for s_range in &s_ranges {
+                            for (&x_exc_range, &m_exc_range, &a_exc_range) in
+                                itertools::iproduct!(&x_exc_ranges, &m_exc_ranges, &a_exc_ranges)
+                            {
+                                total += x_exc_range.size()
+                                    * m_exc_range.size()
+                                    * a_exc_range.size()
+                                    * s_range.size();
+                            }
                         }
                     }
                 },
