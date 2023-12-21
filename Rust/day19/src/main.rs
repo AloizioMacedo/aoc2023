@@ -272,17 +272,17 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
     let mut total = 0;
 
     if let Some(next) = candidate {
-        for Conditional {
-            comparison,
-            category,
-            value,
-            outcome,
-        } in &next.conditionals
+        for (
+            i,
+            Conditional {
+                comparison,
+                category,
+                value,
+                outcome,
+            },
+        ) in next.conditionals.iter().enumerate()
         {
-            if start_at == "m" {
-                println!("{:?}", m_ranges);
-            }
-
+            let i = i + 1;
             let value = *value;
 
             let relevant_inc_range = match category {
@@ -304,7 +304,7 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
             match comparison {
                 Comparison::Greater => {
                     let mut new_inc_range = Vec::new();
-                    for range in relevant_inc_range.iter() {
+                    for range in relevant_exc_ranges.iter() {
                         new_inc_range.push(intersection((value + 1, 4000), *range))
                     }
                     relevant_inc_range.clear();
@@ -312,16 +312,16 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
                 }
                 Comparison::Lesser => {
                     let mut new_inc_range = Vec::new();
-                    for range in relevant_inc_range.iter() {
-                        new_inc_range.push(intersection((0, value - 1), *range))
+                    for range in relevant_exc_ranges.iter() {
+                        new_inc_range.push(intersection((1, value - 1), *range))
                     }
                     relevant_inc_range.clear();
                     relevant_inc_range.extend(new_inc_range);
                 }
             };
 
-            println!(
-                "Relevant inc range: {:?}, Category: {:?}",
+            eprintln!(
+                "{start_at}:{i}: INC Range: {:?}, Category: {:?}",
                 relevant_inc_range, category
             );
 
@@ -329,8 +329,8 @@ fn calculate_total(part_range: &[(i64, i64); 4], workflows: &[Workflow], start_a
             relevant_exc_ranges.clear();
             relevant_exc_ranges.extend(diffs);
 
-            println!(
-                "Relevant exc range: {:?}, Category: {:?}",
+            eprintln!(
+                "{start_at}:{i}: EXC range: {:?}, Category: {:?}",
                 relevant_exc_ranges, category
             );
 
