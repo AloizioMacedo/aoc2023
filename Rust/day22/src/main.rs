@@ -7,16 +7,10 @@ use std::hash::Hash;
 const TEST: &str = include_str!("../test_input.txt");
 const INPUT: &str = include_str!("../input.txt");
 
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
 struct Brick {
     a: Point,
     b: Point,
-}
-
-impl PartialEq for Brick {
-    fn eq(&self, other: &Self) -> bool {
-        (self.a == other.a && self.b == other.b) || (self.a == other.b && self.b == other.a)
-    }
 }
 
 impl Debug for Brick {
@@ -152,7 +146,11 @@ impl Brick {
             z: highest_projection + az.max(bz) - bz + 1,
         };
 
-        Brick { a, b }
+        if a.z == self.a.z {
+            Brick { a, b }
+        } else {
+            Brick { a: b, b: a }
+        }
     }
 
     fn get_lowest_height(&self) -> i32 {
@@ -298,8 +296,7 @@ impl Wall {
                 HashSet::from_iter(hypothetical_wall.bricks.iter().copied());
             let bricks2: HashSet<Brick> = HashSet::from_iter(bricks_without_this_brick);
 
-            println!("{}", count);
-            count += bricks2.difference(&bricks1).count()
+            count += bricks2.len() - bricks2.intersection(&bricks1).count();
         }
 
         count
@@ -334,7 +331,8 @@ fn solve_part_two(contents: &str) -> Result<usize> {
 }
 
 fn main() -> Result<()> {
-    println!("{:?}", solve_part_one(INPUT)?);
+    // println!("{:?}", solve_part_one(INPUT)?);
+    println!("{:?}", solve_part_two(INPUT)?);
 
     Ok(())
 }
