@@ -1,15 +1,13 @@
-use std::{
-    cmp::Ordering,
-    fmt::{Debug, Display},
-};
+use std::{cmp::Ordering, collections::HashSet, fmt::Debug};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
+use std::hash::Hash;
 
 const TEST: &str = include_str!("../test_input.txt");
 const INPUT: &str = include_str!("../input.txt");
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq)]
 struct Brick {
     a: Point,
     b: Point,
@@ -166,7 +164,7 @@ impl Brick {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point {
     x: i32,
     y: i32,
@@ -276,6 +274,36 @@ impl Wall {
 
         count
     }
+
+    fn get_drop_counts(&self) -> usize {
+        let original_bricks = self.bricks.clone();
+
+        let mut count = 0;
+        for brick in &original_bricks {
+            let mut bricks_without_this_brick = original_bricks
+                .iter()
+                .copied()
+                .filter(|x| x != brick)
+                .collect::<Vec<_>>();
+
+            bricks_without_this_brick.sort_by_key(|b| b.get_lowest_height());
+
+            let mut hypothetical_wall = Wall { bricks: Vec::new() };
+
+            for &brick in &bricks_without_this_brick {
+                hypothetical_wall.drop(brick);
+            }
+
+            let bricks1: HashSet<Brick> =
+                HashSet::from_iter(hypothetical_wall.bricks.iter().copied());
+            let bricks2: HashSet<Brick> = HashSet::from_iter(bricks_without_this_brick);
+
+            println!("{}", count);
+            count += bricks2.difference(&bricks1).count()
+        }
+
+        count
+    }
 }
 
 fn parse_contents(contents: &str) -> Result<Wall> {
@@ -299,6 +327,12 @@ fn solve_part_one(contents: &str) -> Result<usize> {
     Ok(wall.get_safe_count())
 }
 
+fn solve_part_two(contents: &str) -> Result<usize> {
+    let wall = parse_contents(contents)?;
+
+    Ok(wall.get_drop_counts())
+}
+
 fn main() -> Result<()> {
     println!("{:?}", solve_part_one(INPUT)?);
 
@@ -312,5 +346,10 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 5);
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), 7);
     }
 }
