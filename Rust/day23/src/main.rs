@@ -26,8 +26,8 @@ fn bfs(matrix: &Array2<char>, origin: (usize, usize), destination: (usize, usize
     let nrows = matrix.nrows();
     let ncols = matrix.ncols();
 
-    let mut visited = Vec::new();
-    visited.push(origin);
+    let mut visited = HashSet::new();
+    visited.insert(origin);
     queue.push_front((origin, visited));
 
     let mut greatest_path_length = 0;
@@ -41,7 +41,7 @@ fn bfs(matrix: &Array2<char>, origin: (usize, usize), destination: (usize, usize
                 greatest_path_length = greatest_path_length.max(p.len());
             } else {
                 let mut p = p.clone();
-                p.push((i - 1, j));
+                p.insert((i - 1, j));
                 queue.push_front(((i - 1, j), p));
             }
         }
@@ -53,7 +53,7 @@ fn bfs(matrix: &Array2<char>, origin: (usize, usize), destination: (usize, usize
                 greatest_path_length = greatest_path_length.max(p.len());
             } else {
                 let mut p = p.clone();
-                p.push((i + 1, j));
+                p.insert((i + 1, j));
                 queue.push_front(((i + 1, j), p));
             }
         }
@@ -65,7 +65,7 @@ fn bfs(matrix: &Array2<char>, origin: (usize, usize), destination: (usize, usize
                 greatest_path_length = greatest_path_length.max(p.len());
             } else {
                 let mut p = p.clone();
-                p.push((i, j - 1));
+                p.insert((i, j - 1));
                 queue.push_front(((i, j - 1), p));
             }
         }
@@ -77,7 +77,7 @@ fn bfs(matrix: &Array2<char>, origin: (usize, usize), destination: (usize, usize
                 greatest_path_length = greatest_path_length.max(p.len());
             } else {
                 let mut p = p.clone();
-                p.push((i, j + 1));
+                p.insert((i, j + 1));
                 queue.push_front(((i, j + 1), p));
             }
         }
