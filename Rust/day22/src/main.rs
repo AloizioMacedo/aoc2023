@@ -1,4 +1,7 @@
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    fmt::{Debug, Display},
+};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -6,10 +9,29 @@ use itertools::Itertools;
 const TEST: &str = include_str!("../test_input.txt");
 const INPUT: &str = include_str!("../input.txt");
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 struct Brick {
     a: Point,
     b: Point,
+}
+
+impl PartialEq for Brick {
+    fn eq(&self, other: &Self) -> bool {
+        (self.a == other.a && self.b == other.b) || (self.a == other.b && self.b == other.a)
+    }
+}
+
+impl Debug for Brick {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let a = self.a;
+        let b = self.b;
+
+        write!(
+            f,
+            "{{[{}, {}, {}] : [{}, {}, {}]}}",
+            a.x, a.y, a.z, b.x, b.y, b.z
+        )
+    }
 }
 
 impl Brick {
@@ -59,14 +81,14 @@ impl Brick {
         }
 
         match self.a.z.cmp(&self.b.z) {
-            Ordering::Less => (self.a.y..=self.b.y)
+            Ordering::Less => (self.a.z..=self.b.z)
                 .map(|z| Point {
                     x: self.a.x,
                     y: self.a.y,
                     z,
                 })
                 .collect(),
-            Ordering::Greater => (self.b.y..=self.a.y)
+            Ordering::Greater => (self.b.z..=self.a.z)
                 .map(|z| Point {
                     x: self.a.x,
                     y: self.a.y,
@@ -80,9 +102,71 @@ impl Brick {
             }],
         }
     }
+
+    /// Will only project if the other brick is below
+    fn get_projection_intersection(&self, other_brick: &Brick) -> Brick {
+        let my_points = self.get_all();
+        let other_points = other_brick.get_all();
+
+        let mut highest_projection = 0;
+        for Point {
+            x: my_x,
+            y: my_y,
+            z: my_z,
+        } in &my_points
+        {
+            for Point {
+                x: other_x,
+                y: other_y,
+                z: other_z,
+            } in &other_points
+            {
+                if other_z >= my_z {
+                    continue;
+                }
+
+                if my_x == other_x && my_y == other_y && other_z > &highest_projection {
+                    highest_projection = *other_z;
+                }
+            }
+        }
+
+        let Point {
+            x: ax,
+            y: ay,
+            z: az,
+        } = self.a;
+
+        let Point {
+            x: bx,
+            y: by,
+            z: bz,
+        } = self.b;
+
+        let a = Point {
+            x: ax,
+            y: ay,
+            z: highest_projection + az.max(bz) - az + 1,
+        };
+        let b = Point {
+            x: bx,
+            y: by,
+            z: highest_projection + az.max(bz) - bz + 1,
+        };
+
+        Brick { a, b }
+    }
+
+    fn get_lowest_height(&self) -> i32 {
+        self.a.z.min(self.b.z)
+    }
+
+    fn get_highest_height(&self) -> i32 {
+        self.a.z.max(self.b.z)
+    }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Point {
     x: i32,
     y: i32,
@@ -124,6 +208,7 @@ fn parse_line(line: &str) -> Result<Brick> {
     })
 }
 
+#[derive(Debug)]
 struct Wall {
     bricks: Vec<Brick>,
 }
@@ -143,19 +228,81 @@ impl Wall {
         }
     }
 
-    fn highest_below(&self, brick: &Brick) -> i32 {
-        todo!()
+    fn drop(&mut self, brick: Brick) {
+        let new_brick_after_dropping = self
+            .bricks
+            .iter()
+            .map(|brick_in_wall| brick.get_projection_intersection(brick_in_wall))
+            .max_by_key(|possible_brick_pos| possible_brick_pos.get_highest_height());
+
+        if let Some(new_brick_after_dropping) = new_brick_after_dropping {
+            self.bricks.push(new_brick_after_dropping);
+        } else {
+            let Brick {
+                a: Point { x: ax, y: ay, .. },
+                b: Point { x: bx, y: by, .. },
+            } = brick;
+
+            self.bricks.push(Brick {
+                a: Point { x: ax, y: ay, z: 1 },
+                b: Point { x: bx, y: by, z: 1 },
+            })
+        }
+    }
+
+    fn get_safe_count(&self) -> usize {
+        let original_bricks = self.bricks.clone();
+
+        let mut count = 0;
+        for brick in &original_bricks {
+            let mut bricks_without_this_brick = original_bricks
+                .iter()
+                .copied()
+                .filter(|x| x != brick)
+                .collect::<Vec<_>>();
+
+            bricks_without_this_brick.sort_by_key(|b| b.get_lowest_height());
+
+            let mut hypothetical_wall = Wall { bricks: Vec::new() };
+
+            for &brick in &bricks_without_this_brick {
+                hypothetical_wall.drop(brick);
+            }
+
+            if hypothetical_wall.bricks == bricks_without_this_brick {
+                count += 1;
+            }
+        }
+
+        count
     }
 }
 
 fn parse_contents(contents: &str) -> Result<Wall> {
-    let bricks = contents.lines().map(parse_line).collect::<Result<_>>()?;
+    let mut bricks_to_add: Vec<Brick> = contents
+        .lines()
+        .map(parse_line)
+        .collect::<Result<Vec<_>>>()?;
 
-    Ok(Wall { bricks })
+    bricks_to_add.sort_by_key(|b| b.get_lowest_height());
+
+    let mut wall = Wall { bricks: Vec::new() };
+
+    bricks_to_add.into_iter().for_each(|b| wall.drop(b));
+
+    Ok(wall)
 }
 
-fn main() {
-    println!("Hello, world!");
+fn solve_part_one(contents: &str) -> Result<usize> {
+    let wall = parse_contents(contents)?;
+
+    Ok(wall.get_safe_count())
+}
+
+fn main() -> Result<()> {
+    println!("{:?}", solve_part_one(INPUT)?);
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -163,5 +310,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {}
+    fn part_one() {
+        assert_eq!(solve_part_one(TEST).unwrap(), 5);
+    }
 }
