@@ -1,7 +1,7 @@
 mod hailstone;
 
 use anyhow::{anyhow, Result};
-use hailstone::{get_intersection_at_xy, parse_line, Hailstone, Intersection, PositionF};
+use hailstone::{get_intersection_at_xy, parse_line, Hailstone, Intersection, PositionGround};
 use itertools::Itertools;
 
 use crate::hailstone::is_point_in_past;
@@ -21,31 +21,18 @@ fn solve_part_one(contents: &str, bound1: i64, bound2: i64) -> Result<usize> {
         .combinations(2)
         .map(|v| (v[0], v[1]))
         .filter(|(&hailstone1, &hailstone2)| {
+            println!("{:?}", get_intersection_at_xy(hailstone1, hailstone2));
             if let Intersection::One((px, py)) = get_intersection_at_xy(hailstone1, hailstone2) {
                 // println!("{:?}", (px, py));
                 px >= bound1 as f64
                     && px <= bound2 as f64
                     && py >= bound1 as f64
                     && py <= bound2 as f64
-                    && !(is_point_in_past(
-                        hailstone1,
-                        PositionF {
-                            x: px,
-                            y: py,
-                            z: 0.0,
-                        },
-                    ))
-                    && !(is_point_in_past(
-                        hailstone2,
-                        PositionF {
-                            x: px,
-                            y: py,
-                            z: 0.0,
-                        },
-                    ))
+                    && !(is_point_in_past(hailstone1, PositionGround { x: px, y: py }))
+                    && !(is_point_in_past(hailstone2, PositionGround { x: px, y: py }))
             } else if let Intersection::Coincident = get_intersection_at_xy(hailstone1, hailstone2)
             {
-                true
+                false // Seems to never happen
             } else {
                 false
             }
