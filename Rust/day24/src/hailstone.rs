@@ -49,12 +49,6 @@ impl std::ops::Sub for Position {
     }
 }
 
-enum VectorComparison {
-    PositiveScaling,
-    NegativeScaling,
-    Incomparable,
-}
-
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Hailstone {
     pub(crate) position: Position,
@@ -110,10 +104,10 @@ pub(crate) fn get_intersection_at_xy(hailstone: Hailstone, other: Hailstone) -> 
             z: vz,
         },
     } = hailstone;
-    let x2 = x1 + 100_000 * vx; // Velocities are very small compared to positions.
-                                // Scaling to prevent accuracy issues.
-    let y2 = y1 + 100_000 * vy; // Velocities are very small compared to positions.
-                                // Scaling to prevent accuracy issues.
+    let x2 = x1 + 100_000_000 * vx; // Velocities are very small compared to positions.
+                                    // Scaling to prevent accuracy issues.
+    let y2 = y1 + 100_000_000 * vy; // Velocities are very small compared to positions.
+                                    // Scaling to prevent accuracy issues.
 
     let Hailstone {
         position: Position { x: x3, y: y3, .. },
@@ -197,19 +191,19 @@ pub fn get_matrix_coefficients_for_ray(hailstone1: Hailstone, hailstone2: Hailst
         },
     } = hailstone2;
 
-    //    let x1 = x1 as f64;
-    //    let x2 = x2 as f64;
-    //    let y1 = y1 as f64;
-    //    let y2 = y2 as f64;
-    //    let z1 = z1 as f64;
-    //    let z2 = z2 as f64;
+    let x1 = x1 as f64;
+    let x2 = x2 as f64;
+    let y1 = y1 as f64;
+    let y2 = y2 as f64;
+    let z1 = z1 as f64;
+    let z2 = z2 as f64;
 
-    // let vx1 = 100_000.0 * vx1 as f64;
-    // let vx2 = 100_000.0 * vx2 as f64;
-    // let vy1 = 100_000.0 * vy1 as f64;
-    // let vy2 = 100_000.0 * vy2 as f64;
-    // let vz1 = 100_000.0 * vz1 as f64;
-    // let vz2 = 100_000.0 * vz2 as f64;
+    let vx1 = 100_000_000.0 * vx1 as f64;
+    let vx2 = 100_000_000.0 * vx2 as f64;
+    let vy1 = 100_000_000.0 * vy1 as f64;
+    let vy2 = 100_000_000.0 * vy2 as f64;
+    let vz1 = 100_000_000.0 * vz1 as f64;
+    let vz2 = 100_000_000.0 * vz2 as f64;
 
     let b = dot_product(
         [x1 - x2, y1 - y2, z1 - z2],
@@ -264,7 +258,12 @@ pub(crate) fn get_shift_velocity(
 
     let sol = m.qr().solve(&b).ok_or(anyhow!("No solution"))?;
 
-    Ok([sol.x as i64, sol.y as i64, sol.z as i64])
+    eprintln!("Sol: {sol:?}");
+    Ok([
+        sol.x.round() as i64,
+        sol.y.round() as i64,
+        sol.z.round() as i64,
+    ])
 }
 
 #[cfg(test)]
