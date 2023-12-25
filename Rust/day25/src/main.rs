@@ -33,6 +33,20 @@ fn parse_contents(contents: &str) -> Result<UnGraphMap<&str, ()>> {
 fn solve_part_one(contents: &str) -> Result<usize> {
     let graph = parse_contents(contents)?;
 
+    let mut test_graph = graph.clone();
+
+    // Found by graphing the output of the print below with graphviz.
+    // println!("{:?}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
+    test_graph.remove_edge("cfn", "jkn");
+    test_graph.remove_edge("ljm", "sfd");
+    test_graph.remove_edge("gst", "rph");
+
+    if petgraph::algo::connected_components(&test_graph) == 2 {
+        let result = petgraph::algo::tarjan_scc(&test_graph);
+
+        return Ok(result[0].len() * result[1].len());
+    }
+
     for comb in graph.all_edges().combinations(3) {
         let (a, b, c) = comb
             .iter()
