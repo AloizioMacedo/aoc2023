@@ -5,6 +5,8 @@ use num_bigint::BigInt;
 
 use crate::linalg::{cross_product, dot_product};
 
+pub(crate) const VEL_FACTOR: i64 = 100_000_000;
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Position {
     pub(crate) x: i64,
@@ -104,17 +106,17 @@ pub(crate) fn get_intersection_at_xy(hailstone: Hailstone, other: Hailstone) -> 
             z: vz,
         },
     } = hailstone;
-    let x2 = x1 + 100_000_000 * vx; // Velocities are very small compared to positions.
-                                    // Scaling to prevent accuracy issues.
-    let y2 = y1 + 100_000_000 * vy; // Velocities are very small compared to positions.
-                                    // Scaling to prevent accuracy issues.
+    let x2 = x1 + VEL_FACTOR * vx; // Velocities are very small compared to positions.
+                                   // Scaling to prevent accuracy issues.
+    let y2 = y1 + VEL_FACTOR * vy; // Velocities are very small compared to positions.
+                                   // Scaling to prevent accuracy issues.
 
     let Hailstone {
         position: Position { x: x3, y: y3, .. },
         velocity: Vector { x: vx2, y: vy2, .. },
     } = other;
-    let x4 = x3 + 100_000 * vx2;
-    let y4 = y3 + 100_000 * vy2;
+    let x4 = x3 + VEL_FACTOR * vx2;
+    let y4 = y3 + VEL_FACTOR * vy2;
 
     let x1 = x1 as f64;
     let x2 = x2 as f64;
@@ -148,8 +150,8 @@ pub(crate) fn get_intersection_at_xy(hailstone: Hailstone, other: Hailstone) -> 
         }
     }
 
-    let time = (px - x1) / (100_000.0 * vx as f64);
-    let pz = z1 as f64 + time * 100_000.0 * vz as f64;
+    let time = (px - x1) / ((VEL_FACTOR as f64) * vx as f64);
+    let pz = z1 as f64 + time * (VEL_FACTOR as f64) * vz as f64;
 
     Intersection::One((px, py, pz))
 }
@@ -198,12 +200,12 @@ pub fn get_matrix_coefficients_for_ray(hailstone1: Hailstone, hailstone2: Hailst
     let z1 = z1 as f64;
     let z2 = z2 as f64;
 
-    let vx1 = 100_000_000.0 * vx1 as f64;
-    let vx2 = 100_000_000.0 * vx2 as f64;
-    let vy1 = 100_000_000.0 * vy1 as f64;
-    let vy2 = 100_000_000.0 * vy2 as f64;
-    let vz1 = 100_000_000.0 * vz1 as f64;
-    let vz2 = 100_000_000.0 * vz2 as f64;
+    let vx1 = (VEL_FACTOR as f64) * vx1 as f64;
+    let vx2 = (VEL_FACTOR as f64) * vx2 as f64;
+    let vy1 = (VEL_FACTOR as f64) * vy1 as f64;
+    let vy2 = (VEL_FACTOR as f64) * vy2 as f64;
+    let vz1 = (VEL_FACTOR as f64) * vz1 as f64;
+    let vz2 = (VEL_FACTOR as f64) * vz2 as f64;
 
     let b = dot_product(
         [x1 - x2, y1 - y2, z1 - z2],

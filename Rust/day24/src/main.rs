@@ -2,7 +2,9 @@ mod hailstone;
 mod linalg;
 
 use anyhow::{anyhow, Result};
-use hailstone::{get_intersection_at_xy, parse_line, Hailstone, Intersection, PositionGround};
+use hailstone::{
+    get_intersection_at_xy, parse_line, Hailstone, Intersection, PositionGround, VEL_FACTOR,
+};
 use itertools::Itertools;
 
 use crate::hailstone::{get_shift_velocity, is_point_in_past, Vector};
@@ -66,17 +68,17 @@ fn solve_part_two(contents: &str) -> Result<f64> {
         Hailstone {
             position: position1,
             velocity: Vector {
-                x: 100_000_000 * vx1 - velocity_to_shift[0],
-                y: 100_000_000 * vy1 - velocity_to_shift[1],
-                z: 100_000_000 * vz1 - velocity_to_shift[2],
+                x: VEL_FACTOR * vx1 - velocity_to_shift[0],
+                y: VEL_FACTOR * vy1 - velocity_to_shift[1],
+                z: VEL_FACTOR * vz1 - velocity_to_shift[2],
             },
         },
         Hailstone {
             position: position2,
             velocity: Vector {
-                x: 100_000_000 * vx2 - velocity_to_shift[0],
-                y: 100_000_000 * vy2 - velocity_to_shift[1],
-                z: 100_000_000 * vz2 - velocity_to_shift[2],
+                x: VEL_FACTOR * vx2 - velocity_to_shift[0],
+                y: VEL_FACTOR * vy2 - velocity_to_shift[1],
+                z: VEL_FACTOR * vz2 - velocity_to_shift[2],
             },
         },
     );
