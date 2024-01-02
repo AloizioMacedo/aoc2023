@@ -87,5 +87,22 @@ let solve_part_one (lines : string list) : int =
   List.filter is_game_valid games
   |> List.fold_left (fun acc game -> acc + game.id) 0
 
-let () = Printf.printf "Test Input: %d\n" (solve_part_one test_input)
-let () = Printf.printf "Real Input: %d\n" (solve_part_one input)
+let get_maxs (game : game) : int * int * int =
+  List.fold_left
+    (fun (max_red, max_green, max_blue) set ->
+      (max set.red max_red, max set.green max_green, max set.blue max_blue))
+    (0, 0, 0) game.gamesets
+
+let solve_part_two (lines : string list) : int =
+  let games = parse_all_games lines in
+
+  List.fold_left
+    (fun acc x ->
+      let max_red, max_green, max_blue = get_maxs x in
+      acc + (max_red * max_green * max_blue))
+    0 games
+
+let () = Printf.printf "Test Input P1: %d\n" (solve_part_one test_input)
+let () = Printf.printf "Real Input P1: %d\n" (solve_part_one input)
+let () = Printf.printf "Test Input P2: %d\n" (solve_part_two test_input)
+let () = Printf.printf "Real Input P2: %d\n" (solve_part_two input)
