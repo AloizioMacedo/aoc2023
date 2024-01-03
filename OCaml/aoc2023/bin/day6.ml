@@ -12,8 +12,30 @@ let get_winning_hs (race : race) : int =
 
   winning_hs race 0
 
+let get_winnin_hs_via_bhaskara (race : race) : int =
+  let b =
+    (float_of_int race.total_time
+    +. sqrt
+         ((float_of_int race.total_time *. float_of_int race.total_time)
+         -. (4.0 *. float_of_int race.distance)))
+    /. 2.0
+  in
+
+  let a =
+    (float_of_int race.total_time
+    -. sqrt
+         ((float_of_int race.total_time *. float_of_int race.total_time)
+         -. (4.0 *. float_of_int race.distance)))
+    /. 2.0
+  in
+
+  int_of_float (floor b -. ceil a) + 1
+
 let solve_part_one (races : race list) : int =
   List.fold_left (fun acc x -> acc * get_winning_hs x) 1 races
+
+let solve_part_two (races : race list) : int =
+  List.fold_left (fun acc x -> acc * get_winnin_hs_via_bhaskara x) 1 races
 
 let solve_part_one_test =
   let races =
@@ -38,5 +60,17 @@ let solve_part_one_real =
 
   solve_part_one races
 
+let solve_part_two_test =
+  let races = [ { total_time = 71530; distance = 940200 } ] in
+
+  solve_part_two races
+
+let solve_part_two_real =
+  let races = [ { total_time = 40817772; distance = 219101213651089 } ] in
+
+  solve_part_two races
+
 let () = Printf.printf "Test Input P1: %d\n" solve_part_one_test
 let () = Printf.printf "Real Input P1: %d\n" solve_part_one_real
+let () = Printf.printf "Test Input P1: %d\n" solve_part_two_test
+let () = Printf.printf "Real Input P1: %d\n" solve_part_two_real
