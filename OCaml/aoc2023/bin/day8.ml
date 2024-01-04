@@ -56,15 +56,36 @@ let rec walk (directions : direction list) (node_map : node NodeMap.t)
     (current_node : string) (current_dir_idx : int) : int =
   if current_node = "ZZZ" then 0
   else
-    let next = NodeMap.find current_node node_map in
+    let node = NodeMap.find current_node node_map in
 
     let direction =
       List.nth directions (current_dir_idx mod List.length directions)
     in
 
     match direction with
-    | L -> 1 + walk directions node_map next.left (current_dir_idx + 1)
-    | R -> 1 + walk directions node_map next.right (current_dir_idx + 1)
+    | L -> 1 + walk directions node_map node.left (current_dir_idx + 1)
+    | R -> 1 + walk directions node_map node.right (current_dir_idx + 1)
+
+let rec walk_to_z (directions : direction list) (node_map : node NodeMap.t)
+    (current_node : string) (current_dir_idx : int) : int =
+  if String.ends_with ~suffix:"Z" current_node then 0
+  else
+    let node = NodeMap.find current_node node_map in
+
+    let direction =
+      List.nth directions (current_dir_idx mod List.length directions)
+    in
+
+    match direction with
+    | L -> 1 + walk_to_z directions node_map node.left (current_dir_idx + 1)
+    | R -> 1 + walk_to_z directions node_map node.right (current_dir_idx + 1)
+
+let get_end (starting_node : string) (node_map : node NodeMap.t)
+    (directions : direction list) : int =
+  walk_to_z directions node_map starting_node 0
+
+let rec gcd a b = if b = 0 then a else gcd b (a mod b)
+let lcm a b = a * b / gcd a b
 
 let solve_part_one (contents : string list) : int =
   let directions, nodes = parse_contents contents in
@@ -73,5 +94,22 @@ let solve_part_one (contents : string list) : int =
 
   walk directions node_map "AAA" 0
 
+let solve_part_two (contents : string list) : int =
+  let directions, nodes = parse_contents contents in
+
+  let starting_nodes =
+    List.filter (fun n -> String.ends_with ~suffix:"A" n.id) nodes
+  in
+
+  let node_map = nodes_to_map nodes in
+
+  let ends =
+    List.map (fun n -> get_end n.id node_map directions) starting_nodes
+  in
+
+  List.fold_left (fun acc x -> lcm acc x) 1 ends
+
 let () = Printf.printf "Test Input P1: %d\n" (solve_part_one test_input)
 let () = Printf.printf "Real Input P1: %d\n" (solve_part_one input)
+let () = Printf.printf "Test Input P2: %d\n" (solve_part_two test_input)
+let () = Printf.printf "Real Input P2: %d\n" (solve_part_two input)
