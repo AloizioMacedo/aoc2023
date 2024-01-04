@@ -1,5 +1,5 @@
 let test_input = Aoc2023.Read_file.read_file "input/day9/test_input.txt"
-let _input = Aoc2023.Read_file.read_file "input/day9/input.txt"
+let input = Aoc2023.Read_file.read_file "input/day9/input.txt"
 
 let parse_line (line : string) : int list =
   List.map (fun x -> int_of_string x) (String.split_on_char ' ' line)
@@ -31,5 +31,15 @@ let solve_part_one (contents : string list) : int =
 
   List.fold_left (fun acc x -> acc + x) 0 results
 
+let solve_part_two (contents : string list) : int =
+  let contents = parse_contents contents in
+  let contents = List.map (fun x -> List.rev x) contents in
+
+  let results = List.map (fun x -> forecast x) contents in
+
+  List.fold_left (fun acc x -> acc + x) 0 results
+
 let () = Printf.printf "Test Input P1: %d\n" (solve_part_one test_input)
-let () = Printf.printf "Test Input P2: %d\n" (solve_part_one _input)
+let () = Printf.printf "Real Input P1: %d\n" (solve_part_one input)
+let () = Printf.printf "Test Input P2: %d\n" (solve_part_two test_input)
+let () = Printf.printf "Real Input P2: %d\n" (solve_part_two input)
