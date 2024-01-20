@@ -1,12 +1,12 @@
 #include <stdio.h>
 
-int get_distance_on_wait_time(int wait, int total) {
+long get_distance_on_wait_time(long wait, long total) {
   return (total - wait) * wait;
 }
 
-int get_total_wait_times_possible(int total, int record) {
+int get_total_wait_times_possible(int total, long record) {
   int count = 0;
-  for (int wait = 1; wait < total; wait++) {
+  for (long wait = 1; wait < total; wait++) {
     if (get_distance_on_wait_time(wait, total) > record) {
       count++;
     }
@@ -25,4 +25,7 @@ int main() {
   }
 
   printf("Part 1: %d\n", total);
+
+  total = get_total_wait_times_possible(40817772, 219101213651089);
+  printf("Part 2: %d\n", total);
 }
