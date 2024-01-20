@@ -124,16 +124,35 @@ int solve_part_one(char *contents) {
   return total;
 }
 
-void test() {
-  struct Card card1 =
-      parse_line("Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53");
+int solve_part_two(char *contents) {
+  int *card_counts = malloc(300 * sizeof(int));
 
-  printf("%d\n", count_winning(card1));
-  printf("%d\n", get_points(card1));
+  char *sp;
+  char *line = strtok_r(contents, "\n", &sp);
 
-  struct Card card2 =
-      parse_line("Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19");
-  printf("%d\n", count_winning(card2));
+  int counter = 0;
+  while (line != NULL) {
+    card_counts[counter] = 1 + card_counts[counter];
+
+    struct Card card = parse_line(line);
+
+    int count = count_winning(card);
+
+    for (int i = 1; i <= count && i < 300; i++) {
+      card_counts[counter + i] += card_counts[counter];
+    }
+
+    line = strtok_r(NULL, "\n", &sp);
+    counter++;
+  }
+
+  int total = 0;
+
+  for (int i = 0; i < 300; i++) {
+    total += card_counts[i];
+  };
+
+  return total;
 }
 
 int main() {
@@ -142,5 +161,7 @@ int main() {
 
   read_file_into_buffer(buffer, fp);
 
+  char *string1 = strdup(buffer);
   printf("Part 1: %d\n", solve_part_one(buffer));
+  printf("Part 2: %d\n", solve_part_two(string1));
 }
