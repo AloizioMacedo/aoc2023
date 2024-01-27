@@ -15,20 +15,20 @@ int read_file_into_buffer(char *buffer, FILE *fp) {
 
 int max(int x, int y) { return x > y ? x : y; }
 
-struct GameSet {
+typedef struct {
   int red;
   int green;
   int blue;
-};
+} GameSet;
 
-void print_game_set(struct GameSet set) {
+void print_game_set(GameSet set) {
   printf("GameSet: %d %d %d\n", set.red, set.green, set.blue);
 }
 
-struct Game {
-  struct GameSet *set;
+typedef struct {
+  GameSet *set;
   int length;
-};
+} Game;
 
 char *get_colorp(char *set) {
   char *number;
@@ -41,8 +41,8 @@ char *get_colorp(char *set) {
   return number;
 };
 
-struct GameSet build_set(char *set) {
-  struct GameSet game_set = {0, 0, 0};
+GameSet build_set(char *set) {
+  GameSet game_set = {0, 0, 0};
 
   char *new_set = malloc(strlen(set) + 1);
   strcpy(new_set, set);
@@ -77,10 +77,10 @@ struct GameSet build_set(char *set) {
   return game_set;
 }
 
-struct Game create_game(char *line) {
-  struct GameSet *sets = malloc(4000);
+Game create_game(char *line) {
+  GameSet *sets = malloc(4000);
 
-  struct Game game = {sets, 0};
+  Game game = {sets, 0};
 
   char *line_copy = malloc(strlen(line) + 1);
   strcpy(line_copy, line);
@@ -108,8 +108,8 @@ struct Game create_game(char *line) {
   return game;
 }
 
-int is_possible(struct Game game) {
-  struct GameSet *set = game.set;
+int is_possible(Game game) {
+  GameSet *set = game.set;
   for (int i = 0; i < game.length; i++) {
     if (set[i].red > 12 || set[i].green > 13 || set[i].blue > 14) {
       return 0;
@@ -127,20 +127,21 @@ int solve_part_one(char *contents) {
   int counter = 1;
 
   while (line != NULL) {
-    struct Game game = create_game(line);
+    Game game = create_game(line);
     if (is_possible(game)) {
       total += counter;
     }
 
     counter++;
     line = strtok_r(NULL, "\n", &savep);
+    free(game.set);
   }
 
   return total;
 }
 
-struct GameSet get_minimum_set(struct Game game) {
-  struct GameSet *set = game.set;
+GameSet get_minimum_set(Game game) {
+  GameSet *set = game.set;
 
   int red = 0;
   int green = 0;
@@ -152,10 +153,10 @@ struct GameSet get_minimum_set(struct Game game) {
     blue = max(set[i].blue, blue);
   }
 
-  return (struct GameSet){red, green, blue};
+  return (GameSet){red, green, blue};
 }
 
-int get_power(struct GameSet set) { return set.red * set.green * set.blue; }
+int get_power(GameSet set) { return set.red * set.green * set.blue; }
 
 int solve_part_two(char *contents) {
   char *savep;
@@ -165,8 +166,8 @@ int solve_part_two(char *contents) {
   int counter = 1;
 
   while (line != NULL) {
-    struct Game game = create_game(line);
-    struct GameSet min_set = get_minimum_set(game);
+    Game game = create_game(line);
+    GameSet min_set = get_minimum_set(game);
 
     total += get_power(min_set);
 
@@ -187,4 +188,7 @@ int main() {
 
   printf("Part 1: %d\n", solve_part_one(string1));
   printf("Part 2: %d\n", solve_part_two(buffer));
+
+  free(buffer);
+  free(string1);
 }
