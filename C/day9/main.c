@@ -81,6 +81,7 @@ int solve_part_one(char *contents) {
     sum_extrapolated += forecasted_value;
 
     line = strtok_r(NULL, "\n", &sp);
+    free(values);
   }
 
   return sum_extrapolated;
@@ -117,6 +118,9 @@ int solve_part_two(char *contents) {
     sum_extrapolated += forecasted_value;
 
     line = strtok_r(NULL, "\n", &sp);
+
+    free(values);
+    free(reversed_values);
   }
 
   return sum_extrapolated;
@@ -128,6 +132,7 @@ int main() {
 
   char *contents_test = malloc(48);
   char *contents = malloc(21726);
+
   read_file_into_buffer(contents, fp);
   read_file_into_buffer(contents_test, fp_test);
 
@@ -139,4 +144,7 @@ int main() {
 
   printf("Part 2 (Test): %d\n", solve_part_two(copied_contents_test));
   printf("Part 2: %d\n", solve_part_two(copied_contents));
+
+  free(contents_test);
+  free(contents);
 }
