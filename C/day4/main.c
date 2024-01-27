@@ -10,12 +10,12 @@ int read_file_into_buffer(char *buffer, FILE *fp) {
   return bytes_read;
 }
 
-struct IntList {
+typedef struct {
   int *values;
   int len;
-};
+} IntList;
 
-int contains(struct IntList list, int value) {
+int contains(IntList list, int value) {
   for (int i = 0; i < list.len; i++) {
     if (list.values[i] == value)
       return 1;
@@ -24,12 +24,12 @@ int contains(struct IntList list, int value) {
   return 0;
 }
 
-struct Card {
-  struct IntList winning_numbers;
-  struct IntList my_numbers;
-};
+typedef struct {
+  IntList winning_numbers;
+  IntList my_numbers;
+} Card;
 
-int count_winning(struct Card card) {
+int count_winning(Card card) {
   int count = 0;
 
   for (int i = 0; i < card.my_numbers.len; i++) {
@@ -41,7 +41,7 @@ int count_winning(struct Card card) {
   return count;
 }
 
-int get_points(struct Card card) {
+int get_points(Card card) {
 
   int count = count_winning(card);
 
@@ -58,7 +58,7 @@ int get_points(struct Card card) {
   }
 }
 
-struct IntList parse_numbers(char *ns) {
+IntList parse_numbers(char *ns) {
   char *sp;
   char *numbers = strdup(ns);
 
@@ -78,12 +78,12 @@ struct IntList parse_numbers(char *ns) {
     i++;
   }
 
-  struct IntList numbers_list = {final_numbers, i};
+  IntList numbers_list = {final_numbers, i};
   return numbers_list;
 }
 
-struct Card parse_line(char *line) {
-  struct Card card;
+Card parse_line(char *line) {
+  Card card;
 
   char *sp;
 
@@ -94,7 +94,7 @@ struct Card parse_line(char *line) {
 
   int is_winning = 1;
   while (numbers != NULL) {
-    struct IntList ns = parse_numbers(numbers);
+    IntList ns = parse_numbers(numbers);
     if (is_winning) {
       card.winning_numbers = ns;
       is_winning = 0;
@@ -115,10 +115,13 @@ int solve_part_one(char *contents) {
   char *line = strtok_r(contents, "\n", &sp);
 
   while (line != NULL) {
-    struct Card card = parse_line(line);
+    Card card = parse_line(line);
 
     total += get_points(card);
     line = strtok_r(NULL, "\n", &sp);
+
+    free(card.my_numbers.values);
+    free(card.winning_numbers.values);
   }
 
   return total;
@@ -134,7 +137,7 @@ int solve_part_two(char *contents) {
   while (line != NULL) {
     card_counts[counter] = 1 + card_counts[counter];
 
-    struct Card card = parse_line(line);
+    Card card = parse_line(line);
 
     int count = count_winning(card);
 
@@ -144,6 +147,9 @@ int solve_part_two(char *contents) {
 
     line = strtok_r(NULL, "\n", &sp);
     counter++;
+
+    free(card.my_numbers.values);
+    free(card.winning_numbers.values);
   }
 
   int total = 0;
@@ -164,4 +170,7 @@ int main() {
   char *string1 = strdup(buffer);
   printf("Part 1: %d\n", solve_part_one(buffer));
   printf("Part 2: %d\n", solve_part_two(string1));
+
+  free(buffer);
+  free(string1);
 }
