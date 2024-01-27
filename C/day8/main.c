@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct Node {
+typedef struct {
   char id[3];
   char left[3];
   char right[3];
-};
+} Node;
 
 long long gcd(long long a, long long b) {
   if (b == 0) {
@@ -18,7 +18,7 @@ long long gcd(long long a, long long b) {
 
 long long lcm(long long a, long long b) { return (a * b) / gcd(a, b); }
 
-void get_next(struct Node node, char dir, char *buffer) {
+void get_next(Node node, char dir, char *buffer) {
   if (dir == 'L') {
     memcpy(buffer, node.left, 3);
   } else {
@@ -37,12 +37,12 @@ char get_dir(char *directions, int index) {
   return directions[index % strlen(directions)];
 }
 
-struct Node read_line(char *line) {
+Node read_line(char *line) {
   char id[] = {line[0], line[1], line[2]};
   char left[] = {line[7], line[8], line[9]};
   char right[] = {line[12], line[13], line[14]};
 
-  struct Node node;
+  Node node;
 
   memcpy(node.id, id, 3);
   memcpy(node.left, left, 3);
@@ -51,16 +51,16 @@ struct Node read_line(char *line) {
   return node;
 }
 
-struct FilteredNodes {
-  struct Node **nodes;
+typedef struct {
+  Node **nodes;
   int length;
-};
+} FilteredNodes;
 
 int ideq(char *a, char *b) {
   return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
 }
 
-struct Node *find(char *id, struct Node *nodes, int length) {
+Node *find(char *id, Node *nodes, int length) {
   for (int i = 0; i < length; i++) {
     if (ideq(id, nodes[i].id)) {
       return &nodes[i];
@@ -70,9 +70,8 @@ struct Node *find(char *id, struct Node *nodes, int length) {
   return NULL;
 }
 
-struct FilteredNodes find_all_ending_in_char(char c, struct Node *nodes,
-                                             int length) {
-  struct Node **results = malloc(length * sizeof(struct Node *));
+FilteredNodes find_all_ending_in_char(char c, Node *nodes, int length) {
+  Node **results = malloc(length * sizeof(Node *));
 
   int counter = 0;
   for (int i = 0; i < length; i++) {
@@ -82,11 +81,11 @@ struct FilteredNodes find_all_ending_in_char(char c, struct Node *nodes,
     }
   }
 
-  return (struct FilteredNodes){results, counter};
+  return (FilteredNodes){results, counter};
 }
 
 struct Problem {
-  struct Node *nodes;
+  Node *nodes;
   int length;
   char *directions;
 };
@@ -97,7 +96,7 @@ struct Problem build_problem(char *contents) {
   char *sp;
   char *next_line = strtok_r(contents_copy, "\n", &sp);
 
-  struct Node *nodes = malloc(1000 * sizeof(struct Node));
+  Node *nodes = malloc(1000 * sizeof(Node));
 
   char *directions;
   int counter = 0;
@@ -105,7 +104,7 @@ struct Problem build_problem(char *contents) {
     if (counter == 0) {
       directions = next_line;
     } else {
-      struct Node node = read_line(next_line);
+      Node node = read_line(next_line);
       nodes[counter - 1] = node;
     }
 
@@ -121,7 +120,7 @@ struct Problem build_problem(char *contents) {
 int solve_part_one(char *contents) {
   struct Problem problem = build_problem(contents);
 
-  struct Node node = *find("AAA", problem.nodes, problem.length);
+  Node node = *find("AAA", problem.nodes, problem.length);
 
   char buffer[3];
 
@@ -133,6 +132,9 @@ int solve_part_one(char *contents) {
 
     counter++;
   }
+
+  free(problem.nodes);
+  free(problem.directions);
 
   return counter;
 }
@@ -149,7 +151,7 @@ long long lcm_list(long long *list, long long length) {
 long long solve_part_two(char *contents) {
   struct Problem problem = build_problem(contents);
 
-  struct FilteredNodes nodes_ending_at_a =
+  FilteredNodes nodes_ending_at_a =
       find_all_ending_in_char('A', problem.nodes, problem.length);
 
   long long *counters_for_each_node_ending_at_a =
@@ -158,10 +160,10 @@ long long solve_part_two(char *contents) {
   char buffer[3];
 
   for (int i = 0; i < nodes_ending_at_a.length; i++) {
-    struct Node *node_ending_at_a = nodes_ending_at_a.nodes[i];
+    Node *node_ending_at_a = nodes_ending_at_a.nodes[i];
 
     int counter = 0;
-    struct Node node = *node_ending_at_a;
+    Node node = *node_ending_at_a;
     while (node.id[2] != 'Z') {
       get_next(node, get_dir(problem.directions, counter), buffer);
 
@@ -173,7 +175,17 @@ long long solve_part_two(char *contents) {
     counters_for_each_node_ending_at_a[i] = counter;
   }
 
-  return lcm_list(counters_for_each_node_ending_at_a, nodes_ending_at_a.length);
+  free(nodes_ending_at_a.nodes);
+
+  free(problem.nodes);
+  free(problem.directions);
+
+  long long result =
+      lcm_list(counters_for_each_node_ending_at_a, nodes_ending_at_a.length);
+
+  free(counters_for_each_node_ending_at_a);
+
+  return result;
 }
 
 int main() {
@@ -185,4 +197,7 @@ int main() {
 
   printf("Part 1: %d\n", solve_part_one(contents));
   printf("Part 2: %llu\n", solve_part_two(contents_copy));
+
+  free(contents);
+  free(contents_copy);
 }
