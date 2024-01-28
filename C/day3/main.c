@@ -39,6 +39,44 @@ bool is_digit_or_dot(char c) { return (c >= '0' && c <= '9') || c == '.'; }
 
 bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
+int get_near_number_entries(int i, int j, Engine e, NumberEntry *np) {
+  int counter = 0;
+
+  for (int k = 0; k < e.number_of_entries; k++) {
+    int x_deltas[] = {-1, 0, 1};
+    int y_deltas[] = {-1, 0, 1};
+
+    for (int l = 0; l < 3; l++) {
+      for (int m = 0; m < 3; m++) {
+        int delta_x = x_deltas[l];
+        int delta_y = y_deltas[m];
+
+        if (i + delta_x < 0 || j + delta_y < 0 || i + delta_x >= e.m.nrows ||
+            j + delta_y >= e.m.ncols || (delta_x == 0 && delta_y == 0)) {
+          {
+            continue;
+          }
+        }
+
+        NumberEntry ne = e.entries[k];
+
+        for (int possible_col = ne.beg_col; possible_col <= ne.end_col;
+             possible_col++) {
+          if (ne.line + delta_y == i && possible_col + delta_x == j) {
+            np[counter] = ne;
+            counter++;
+            goto ending_of_this_entry;
+          }
+        }
+      }
+    }
+
+  ending_of_this_entry:;
+  }
+
+  return counter;
+}
+
 int get_numbers(char *line, int line_no, NumberEntry *np) {
   int int_counter = 0;
 
@@ -178,6 +216,34 @@ int solve_part_one(char *contents) {
   return total;
 }
 
+int solve_part_two(char *contents) {
+  Engine e = create_engine(contents);
+
+  int total = 0;
+  for (int i = 0; i < e.m.nrows; i++) {
+    for (int j = 0; j < e.m.ncols; j++) {
+      if (entry(e.m, i, j) == '*') {
+        NumberEntry *nes = malloc(sizeof(NumberEntry) * e.number_of_entries);
+
+        int n = get_near_number_entries(i, j, e, nes);
+
+        if (n != 2) {
+          continue;
+        }
+
+        total += nes[0].number * nes[1].number;
+
+        free(nes);
+      }
+    }
+  }
+
+  free(e.entries);
+  free(e.m.values);
+
+  return total;
+}
+
 int main() {
   char *buffer = malloc(19741);
   char *buffer_test = malloc(111);
@@ -186,8 +252,22 @@ int main() {
   FILE *fp_test = fopen("test_input.txt", "r");
 
   read_file_into_buffer(buffer, fp);
+  char *copied_contents = strdup(buffer);
+
   read_file_into_buffer(buffer_test, fp_test);
+  char *copied_contents_test = strdup(buffer_test);
 
   printf("Part 1 (Test): %d\n", solve_part_one(buffer_test));
   printf("Part 1: %d\n", solve_part_one(buffer));
+  printf("Part 1 (Test): %d\n", solve_part_two(copied_contents_test));
+  printf("Part 2: %d\n", solve_part_two(copied_contents));
+
+  free(buffer);
+  free(buffer_test);
+
+  free(copied_contents);
+  free(copied_contents_test);
+
+  free(fp);
+  free(fp_test);
 }
