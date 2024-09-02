@@ -4,7 +4,6 @@
 #include <sstream>
 #include <string_view>
 #include <variant>
-#include <vector>
 
 std::string read_file(std::string name) {
   std::ifstream f;
@@ -16,19 +15,24 @@ std::string read_file(std::string name) {
 }
 
 int get_value(std::string_view word) {
-  std::vector<int> values = {};
+  int first = -1;
+  int last = -1;
 
   for (char c : word) {
     if (c - '0' <= 9 && c >= '0') {
-      values.push_back(c - '0');
+      int value = c - '0';
+      if (first == -1) {
+        first = value;
+      }
+      last = value;
     }
   }
 
-  if (values.empty()) {
+  if (first == -1) {
     return 0;
   }
 
-  return 10 * values.front() + values.back();
+  return 10 * first + last;
 }
 
 int sum_values(std::string_view contents) {
