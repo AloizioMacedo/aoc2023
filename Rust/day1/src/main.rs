@@ -2,63 +2,45 @@ use anyhow::{anyhow, Result};
 
 const INPUT: &str = include_str!("../input.txt");
 
-const SPELLED_OUT_NUMBERS: [&str; 9] = [
-    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+const SPELLED_OUT_NUMBERS: [&str; 10] = [
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
 ];
-
-// To avoid having to allocate Strings from the integers.
-const _ONE_TO_9: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 fn parse_line(line: &str) -> Result<u32> {
     let mut numbers = line.chars().filter_map(|c| c.to_digit(10)).peekable();
 
     let first = *numbers
         .peek()
-        .ok_or(anyhow!("Line {line} missing a number."))?;
+        .ok_or_else(|| anyhow!("Line missing a number."))?;
     let last = numbers
         .last()
-        .ok_or(anyhow!("Line {line} missing a number."))?;
+        .ok_or_else(|| anyhow!("Line missing a number."))?;
 
     Ok(10 * first + last)
 }
 
-fn transform_line(line: &str) -> Vec<u32> {
-    let mut numbers = Vec::new();
-
-    for i in 0..line.len() {
-        for (j, spelled_out_number) in SPELLED_OUT_NUMBERS.iter().enumerate() {
-            if line[i..].starts_with(spelled_out_number) {
-                numbers.push(j as u32 + 1);
-                break;
+fn parse_line_two(line: &str) -> Result<u32> {
+    let mut numbers = line
+        .char_indices()
+        .filter_map(|(i, c)| {
+            for (j, number) in SPELLED_OUT_NUMBERS.iter().enumerate() {
+                if line[i..].starts_with(number) {
+                    return Some(j as u32);
+                }
             }
-        }
 
-        if let Some(x) = line[i..]
-            .chars()
-            .next()
-            .expect("Should not be empty given that i < line.len()")
-            .to_digit(10)
-        {
-            numbers.push(x);
-        }
-    }
+            c.to_digit(10)
+        })
+        .peekable();
 
-    numbers
-}
+    let first = *numbers
+        .peek()
+        .ok_or_else(|| anyhow!("Line missing a number."))?;
+    let last = numbers
+        .last()
+        .ok_or_else(|| anyhow!("Line missing a number."))?;
 
-/// This trick doesn't work for some reason that is still not clear.
-fn _adjust_line(line: &str) -> String {
-    let mut line = line.to_string();
-
-    for (spelled_out_number, number) in SPELLED_OUT_NUMBERS.iter().zip(_ONE_TO_9) {
-        line = line.replace(
-            spelled_out_number,
-            &(spelled_out_number.to_string() + number), // It is necessary to keep the spelled out
-                                                        // version in order not to lose chars.
-        );
-    }
-
-    line
+    Ok(10 * first + last)
 }
 
 fn solve_part_one(contents: &str) -> Result<u32> {
@@ -66,14 +48,7 @@ fn solve_part_one(contents: &str) -> Result<u32> {
 }
 
 fn solve_part_two(contents: &str) -> Result<u32> {
-    contents
-        .lines()
-        .map(transform_line)
-        .map(|numbers| match (numbers.first(), numbers.last()) {
-            (Some(x), Some(y)) => Ok(10 * x + y),
-            _ => Err(anyhow!("Line with no numbers")),
-        })
-        .sum()
+    contents.lines().map(parse_line_two).sum()
 }
 
 fn main() -> Result<()> {
