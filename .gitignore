@@ -7,3 +7,9 @@ test_input_p2.txt
 *__pycache__*
 _build
 a.out
+
+# Haskell
+dist-newstyle
+*.hi
+*.o
+
