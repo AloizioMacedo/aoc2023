@@ -9,6 +9,7 @@ main :: IO ()
 main = do
   contents <- readFile "input.txt"
   print $ solvePartOne contents
+  print $ solvePartTwo contents
 
 data Number = Number {col1 :: Int, col2 :: Int, line :: Int, val :: Int} deriving (Show)
 
@@ -59,8 +60,20 @@ isClose Number {col1, col2, line} Gear {linep, colp} = colp >= col1 - 1 && colp 
 isCloseToAGear :: Number -> [Gear] -> Bool
 isCloseToAGear n = any (isClose n)
 
+getNumbersCloseTo :: Gear -> [Number] -> [Number]
+getNumbersCloseTo g = filter (`isClose` g)
+
+gearRatio :: [Number] -> Int
+gearRatio = product . map val
+
 solvePartOne :: String -> Int
 solvePartOne s =
   let numbers = getAllNumbers $ lines s
       gears = getAllGears $ lines s
    in sum $ map val (filter (`isCloseToAGear` gears) numbers)
+
+solvePartTwo :: String -> Int
+solvePartTwo s =
+  let numbers = getAllNumbers $ lines s
+      gears = getAllGears $ lines s
+   in sum $ map (gearRatio . (`getNumbersCloseTo` numbers)) (filter (\g -> length (getNumbersCloseTo g numbers) == 2) gears)
