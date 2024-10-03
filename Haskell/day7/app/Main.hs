@@ -10,8 +10,9 @@ main :: IO ()
 main = do
   contents <- readFile "input.txt"
   print $ solvePartOne contents
+  print $ solvePartTwo contents
 
-newtype Hand = Hand [Char] deriving (Eq)
+newtype Hand = Hand {inner :: [Char]} deriving (Eq, Show)
 
 getValue :: Char -> Int
 getValue '2' = 2
@@ -23,11 +24,21 @@ getValue '7' = 7
 getValue '8' = 8
 getValue '9' = 9
 getValue 'T' = 10
-getValue 'J' = 11
+getValue 'J' = 1 -- Change between P1/P2.
 getValue 'Q' = 12
 getValue 'K' = 13
 getValue 'A' = 14
 getValue _ = -1
+
+findMostCommon :: Hand -> Char
+findMostCommon (Hand ['J', 'J', 'J', 'J', 'J']) = 'J'
+findMostCommon (Hand h) = head (maximumBy (compare `on` length) ((group . sort) (filter (/= 'J') h)))
+
+switchJokers :: Char -> Hand -> Hand
+switchJokers _ (Hand []) = Hand []
+switchJokers s (Hand (c : cs))
+  | c == 'J' = Hand (s : inner (switchJokers s (Hand cs)))
+  | otherwise = Hand (c : inner (switchJokers s (Hand cs)))
 
 isFiveOfAKind :: Hand -> Bool
 isFiveOfAKind (Hand h) = all (\c -> c == head h) h
@@ -68,11 +79,24 @@ getScore h
   | isOnePair h = 1
   | otherwise = 0
 
-instance Ord Hand where
+getScoreWithJoker :: Hand -> Int
+getScoreWithJoker h = let mostCommonChar = findMostCommon h in getScoreWithJoker' mostCommonChar h
+
+getScoreWithJoker' :: Char -> Hand -> Int
+getScoreWithJoker' c h
+  | isFiveOfAKind (switchJokers c h) = 6
+  | isFourOfAKind (switchJokers c h) = 5
+  | isFullHouse (switchJokers c h) = 4
+  | isThreeOfAKind (switchJokers c h) = 3
+  | isTwoPair (switchJokers c h) = 2
+  | isOnePair (switchJokers c h) = 1
+  | otherwise = 0
+
+instance Ord Hand where -- Change between P1/P2
   compare h1 h2
-    | getScore h1 < getScore h2 = LT
-    | getScore h1 > getScore h2 = GT
-    | getScore h1 == getScore h2 = tieBreak h1 h2
+    | getScoreWithJoker h1 < getScoreWithJoker h2 = LT
+    | getScoreWithJoker h1 > getScoreWithJoker h2 = GT
+    | getScoreWithJoker h1 == getScoreWithJoker h2 = tieBreak h1 h2
     | otherwise = error "unreachable"
 
 lineToHandAndBit :: Text -> (Hand, Int)
@@ -88,3 +112,6 @@ sortHands = sortBy (\(x, _) (y, _) -> compare x y)
 
 solvePartOne :: Text -> Int
 solvePartOne t = foldl (\acc (p, q) -> acc + p * q) 0 (zip (map snd ((sortHands . toHands) t)) [1 ..])
+
+solvePartTwo :: Text -> Int
+solvePartTwo t = foldl (\acc (p, q) -> acc + p * q) 0 (zip (map snd ((sortHands . toHands) t)) [1 ..])
